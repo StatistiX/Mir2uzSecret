@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legend of Mir 2 UZ SECRET - Forum</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Legend of Mir 2 UZ SECRET - O'zbekistondagi eng mashhur va eng epik MMORPG o'yinining rasmiy jamoat sayti va forumi. Forum, jonli chat, yangiliklar va boshqalar.">
+    <meta name="keywords" content="Mir 2, Mir 2 UZ, Legend of Mir 2, Mir2uzSecret, mir2.uz, mmorpg uz, uzbek game, mir 2 forum, mir 2 chat">
+    
+    <!-- Premium Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=MedievalSharp&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons for gaming elements -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="forum">
+
+    <!-- Gaming Background Glows -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+
+    <!-- MAIN CONTAINER -->
+    <div class="app-container">
+        
+        <!-- HEADER SECTION WITH AI GENERATED BANNER -->
+        <header class="main-header" style="background-image: linear-gradient(to bottom, rgba(10, 10, 13, 0.3), rgba(10, 10, 13, 0.95)), url('banner.png');">
+            <div class="header-overlay"></div>
+            <div class="header-content">
+                <div class="header-logo-container">
+                    <span class="sub-title" data-i18n="welcome_title">WELCOME TO THE SECRET LEGEND</span>
+                    <h1 class="main-logo-text">
+                        <span class="gold-text">LEGEND OF MIR 2</span>
+                        <span class="crimson-text glow-red">UZ SECRET</span>
+                    </h1>
+                    <p class="server-domain">www.mir2.uz</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- TOP BAR FOR STATUS & QUICK ACTIONS -->
+        <div class="top-nav-bar">
+            <!-- Server Status Summary -->
+            <div class="quick-status-container">
+                <div class="status-item">
+                    <span class="status-dot online animate-pulse"></span>
+                    <span class="label" data-i18n="server">Server:</span>
+                    <span class="value online-text" data-i18n="online">ONLINE</span>
+                </div>
+                <div class="status-item">
+                    <i class="fa-solid fa-users text-gold"></i>
+                    <span class="label" data-i18n="online_players">Online Players:</span>
+                    <span class="value" id="top-player-count">247 / 1000</span>
+                </div>
+                <div class="status-item hidden-mobile">
+                    <i class="fa-solid fa-gauge-high text-gold"></i>
+                    <span class="label" data-i18n="ping">Ping:</span>
+                    <span class="value text-success">32ms</span>
+                </div>
+            </div>
+
+            <!-- Language Switcher -->
+            <div class="language-selector">
+                <button class="lang-btn" data-lang="uz">UZB</button>
+                <button class="lang-btn" data-lang="ru">РУС</button>
+                <button class="lang-btn" data-lang="en">ENG</button>
+            </div>
+        </div>
+
+        <!-- MAIN LAYOUT: Grid of Sidebar & Main Content -->
+        <div class="layout-grid">
+            
+            <!-- LEFT SIDEBAR -->
+            <aside class="sidebar-left">
+                
+                <!-- USER ACCOUNT PROFILE CARD -->
+                <div class="sidebar-card user-profile-card" id="user-profile-section">
+                    <!-- Guest View -->
+                    <div id="guest-view" class="profile-view-state">
+                        <div class="avatar-placeholder">
+                            <i class="fa-solid fa-user-shield text-gold"></i>
+                        </div>
+                        <h3 data-i18n="guest_title">Mehmon</h3>
+                        <p class="role-badge newbie" data-i18n="guest_desc">Ro'yxatdan o'tmagan</p>
+                        <button class="btn btn-primary btn-full btn-gold-glow" id="open-login-btn">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                            <span data-i18n="login_register">Kirish / Ro'yxatdan o'tish</span>
+                        </button>
+                    </div>
+
+                    <!-- Logged In View -->
+                    <div id="user-view" class="profile-view-state hidden">
+                        <div class="profile-avatar-container">
+                            <img src="" id="user-avatar" class="user-avatar" alt="Avatar">
+                            <span class="rank-ring" id="user-rank-ring"></span>
+                        </div>
+                        <h3 id="user-display-name">Username</h3>
+                        <span class="role-badge" id="user-display-role">Newbie</span>
+                        
+                        <div class="user-stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-num" id="stat-posts">0</span>
+                                <span class="stat-label" data-i18n="posts">Postlar</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-num" id="stat-likes">0</span>
+                                <span class="stat-label" data-i18n="likes">Layklar</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-num text-gold" id="stat-points">0</span>
+                                <span class="stat-label" data-i18n="points">Ballar</span>
+                            </div>
+                        </div>
+
+                        <div class="profile-actions">
+                            <button class="btn btn-secondary btn-full" id="open-my-profile-btn">
+                                <i class="fa-solid fa-circle-user"></i> <span data-i18n="my_profile">Profil</span>
+                            </button>
+                            <button class="btn btn-danger btn-full btn-crimson" id="logout-btn">
+                                <i class="fa-solid fa-right-from-bracket"></i> <span data-i18n="logout">Chiqish</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MAIN NAVIGATION PANEL -->
+                <nav class="sidebar-card nav-panel">
+                    <h4 class="card-title" data-i18n="navigation">NAVIGATSIYA</h4>
+                    <div class="nav-list">
+                        <a href="index.html" class="nav-item">
+                            <i class="fa-solid fa-house"></i>
+                            <span data-i18n="nav_home">Bosh sahifa & Yangiliklar</span>
+                        </a>
+                        <a href="forum.html" class="nav-item active">
+                            <i class="fa-solid fa-comments"></i>
+                            <span data-i18n="nav_forum">Sayt Forumi</span>
+                        </a>
+                        <a href="chat.html" class="nav-item">
+                            <i class="fa-solid fa-comment-dots animate-pulse"></i>
+                            <span data-i18n="nav_chat">Global Shoutbox Chat</span>
+                            <span class="badge badge-red pulse" id="chat-badge-count">9+</span>
+                        </a>
+                        <a href="admin.html" class="nav-item hidden" id="nav-item-admin">
+                            <i class="fa-solid fa-crown text-gold"></i>
+                            <span data-i18n="nav_admin" class="gold-text">Admin Panel</span>
+                        </a>
+                    </div>
+                </nav>
+
+                <!-- GAME SERVER DETAILS -->
+                <div class="sidebar-card server-info-card">
+                    <h4 class="card-title" data-i18n="server_info">SERVER MA'LUMOTLARI</h4>
+                    <div class="info-list">
+                        <div class="info-row">
+                            <span class="info-label" data-i18n="server_version">Versiya:</span>
+                            <span class="info-value text-gold">v2.3 - UZ SECRET</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label" data-i18n="server_exp">Tajriba (EXP):</span>
+                            <span class="info-value">x10 (Muted rates)</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label" data-i18n="server_drop">Drop darajasi:</span>
+                            <span class="info-value">x5</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label" data-i18n="server_uptime">Uptime:</span>
+                            <span class="info-value text-success">99.98%</span>
+                        </div>
+                    </div>
+                </div>
+
+            </aside>
+
+            <!-- MAIN CONTENT AREA -->
+            <main class="main-content">
+                
+                <!-- FORUM VIEWS -->
+                <section class="content-tab" id="tab-forum">
+                    <!-- Forum Dashboard / Categories & Thread List -->
+                    <div id="forum-list-view">
+                        <div class="section-header">
+                            <h2><i class="fa-solid fa-comments text-gold"></i> <span data-i18n="forum_title">LEGEND OF MIR 2 MUHOKAMALARI</span></h2>
+                            <button class="btn btn-primary btn-gold-glow" id="create-topic-btn">
+                                <i class="fa-solid fa-plus"></i> <span data-i18n="new_topic">Yangi mavzu ochish</span>
+                            </button>
+                        </div>
+
+                        <!-- Forum Filter & Categories -->
+                        <div class="forum-bar">
+                            <div class="category-filters" id="category-filters-container">
+                                <button class="filter-btn active" data-category="all" data-i18n="cat_all">Barcha mavzular</button>
+                                <button class="filter-btn" data-category="general" data-i18n="cat_general">Umumiy suhbat</button>
+                                <button class="filter-btn" data-category="guides" data-i18n="cat_guides">Qo'llanmalar & Guides</button>
+                                <button class="filter-btn" data-category="news" data-i18n="cat_news">Server Yangiliklari</button>
+                                <button class="filter-btn" data-category="guilds" data-i18n="cat_guilds">Gildiyalar</button>
+                                <button class="filter-btn" data-category="trade" data-i18n="cat_trade">Savdo-sotiq</button>
+                            </div>
+                        </div>
+
+                        <!-- Topics List -->
+                        <div class="forum-topics-container" id="topics-list-container">
+                            <!-- Forum topics injected dynamically by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Forum Create Topic Form View (Hidden by default) -->
+                    <div id="forum-create-view" class="hidden">
+                        <div class="section-header">
+                            <h2><i class="fa-solid fa-pen-to-square text-gold"></i> <span data-i18n="new_topic_header">YANGI FORUM MAVZUSI YARATISH</span></h2>
+                            <button class="btn btn-secondary" id="cancel-create-topic-btn">
+                                <i class="fa-solid fa-chevron-left"></i> <span data-i18n="back_to_forum">Orqaga qaytish</span>
+                            </button>
+                        </div>
+
+                        <form id="create-topic-form" class="gaming-form">
+                            <div class="form-group">
+                                <label for="topic-title" data-i18n="topic_title_label">Mavzu Sarlavhasi</label>
+                                <input type="text" id="topic-title" required placeholder="Mavzuni to'liq va aniq nomlang..." class="form-control">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="topic-category" data-i18n="topic_category_label">Kategoriya</label>
+                                    <select id="topic-category" class="form-control">
+                                        <option value="general" data-i18n="cat_general">Umumiy suhbat</option>
+                                        <option value="guides" data-i18n="cat_guides">Qo'llanmalar & Guides</option>
+                                        <option value="guilds" data-i18n="cat_guilds">Gildiyalar</option>
+                                        <option value="trade" data-i18n="cat_trade">Savdo-sotiq</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="topic-content" data-i18n="topic_content_label">Mavzu mazmuni (Matni)</label>
+                                <textarea id="topic-content" rows="10" required placeholder="Tafsilotlarni kiriting..." class="form-control"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-gold-glow">
+                                <i class="fa-solid fa-paper-plane"></i> <span data-i18n="publish_topic">Mavzuni e'lon qilish</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Forum Topic Detail View (Hidden by default) -->
+                    <div id="forum-detail-view" class="hidden">
+                        <div class="section-header">
+                            <button class="btn btn-secondary" id="back-to-topics-btn">
+                                <i class="fa-solid fa-arrow-left"></i> <span data-i18n="back_to_topics">Mavzular ro'yxatiga qaytish</span>
+                            </button>
+                            <div class="detail-actions" id="detail-admin-actions">
+                                <!-- Admin actions injected dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Main Topic Original Post Card -->
+                        <article class="topic-main-post-card" id="detail-topic-card">
+                            <!-- Injected dynamically -->
+                        </article>
+
+                        <!-- Comments Section -->
+                        <div class="comments-section">
+                            <h3 class="comments-title">
+                                <i class="fa-solid fa-reply-all text-gold"></i> 
+                                <span data-i18n="comments_title">Muhokamalar & Javoblar</span> 
+                                (<span id="comments-count">0</span>)
+                            </h3>
+                            
+                            <div class="comments-list" id="comments-list-container">
+                                <!-- Injected dynamically -->
+                            </div>
+
+                            <!-- Comment Input Form (Requires Login) -->
+                            <div class="comment-reply-form-box" id="comment-form-container">
+                                <div id="comment-form-guest-prompt" class="guest-prompt-box">
+                                    <p data-i18n="comment_login_prompt">Mavzuga javob yozish va muhokamada ishtirok etish uchun tizimga kiring.</p>
+                                    <button class="btn btn-primary btn-sm btn-gold-glow open-login-trigger" data-i18n="login">KIRISH</button>
+                                </div>
+                                <form id="comment-reply-form" class="gaming-form hidden">
+                                    <div class="form-group">
+                                        <label for="comment-text" data-i18n="write_reply_label">Fikr yoki javob yozing</label>
+                                        <textarea id="comment-text" rows="4" required placeholder="Fikringizni yozing..." class="form-control"></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-gold-glow btn-sm">
+                                        <i class="fa-solid fa-reply"></i> <span data-i18n="send_reply">Javobni yuborish</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+
+            <!-- RIGHT SIDEBAR -->
+            <aside class="sidebar-right">
+                
+                <!-- TOP ACTIVE PLAYERS RATING -->
+                <div class="sidebar-card ratings-card">
+                    <h4 class="card-title"><i class="fa-solid fa-trophy text-gold"></i> <span data-i18n="top_players">TOP O'YINCHILAR (FORUM)</span></h4>
+                    <ul class="rating-list" id="top-users-rating-list">
+                        <!-- Dynamically filled by JS -->
+                    </ul>
+                </div>
+
+                <!-- SIDEBAR MINI-CHAT SHOUTBOX PREVIEW -->
+                <div class="sidebar-card mini-chat-card">
+                    <h4 class="card-title">
+                        <i class="fa-solid fa-comments text-gold"></i> 
+                        <span data-i18n="shoutbox_preview">SHOUTBOX MINI-CHAT</span>
+                        <span class="pulse-dot green"></span>
+                    </h4>
+                    <div class="mini-chat-logs" id="mini-chat-list">
+                        <!-- Filled by JS -->
+                    </div>
+                    <a href="chat.html" class="btn btn-secondary btn-full btn-sm" id="sidebar-go-to-chat-btn">
+                        <span data-i18n="go_to_full_chat">To'liq chatga o'tish</span> <i class="fa-solid fa-arrow-right-long"></i>
+                    </a>
+                </div>
+
+                <!-- COMMUNITY PARTNERS -->
+                <div class="sidebar-card partner-links-card">
+                    <h4 class="card-title" data-i18n="partner_links">HAMKOR SAYTLAR</h4>
+                    <ul class="partner-list">
+                        <li><a href="#" class="partner-link"><i class="fa-solid fa-shield text-gold"></i> Mir 2 Database</a></li>
+                        <li><a href="#" class="partner-link"><i class="fa-solid fa-swords text-gold"></i> Mir 2 Wiki Guide</a></li>
+                        <li><a href="#" class="partner-link"><i class="fa-solid fa-dragon text-gold"></i> MMORPG UZ Hub</a></li>
+                    </ul>
+                </div>
+
+            </aside>
+
+        </div>
+
+        <!-- FOOTER -->
+        <footer class="main-footer">
+            <p>&copy; 2026 <strong>Legend of Mir 2 UZ SECRET</strong> (mir2.uz). Barcha huquqlar himoyalangan.</p>
+            <p class="footer-note" data-i18n="footer_credits">Ushbu veb-portal o'yin ishqibozlari uchun yaratilgan jamoat portalidir. Mir 2 o'yini mualliflik huquqlari Wemade kompaniyasiga tegishlidir.</p>
+        </footer>
+
+    </div>
+
+    <!-- AUTH MODAL (LOGIN & REGISTER) -->
+    <div class="modal-backdrop hidden" id="auth-modal">
+        <div class="modal-card">
+            <button class="modal-close" id="close-auth-modal-btn">&times;</button>
+            
+            <div class="modal-tabs">
+                <button class="modal-tab-btn active" id="modal-tab-login" data-i18n="tab_login">Kirish</button>
+                <button class="modal-tab-btn" id="modal-tab-register" data-i18n="tab_register">Ro'yxatdan o'tish</button>
+            </div>
+
+            <!-- Login Form -->
+            <div class="modal-form-content" id="modal-login-form-box">
+                <form id="login-form" class="gaming-form">
+                    <div class="form-group">
+                        <label for="login-username" data-i18n="lbl_username">Foydalanuvchi nomi</label>
+                        <input type="text" id="login-username" required placeholder="Foydalanuvchi nomingizni kiriting..." class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password" data-i18n="lbl_password">Parol</label>
+                        <input type="password" id="login-password" required placeholder="••••••••" class="form-control">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-gold-glow btn-full">
+                        <i class="fa-solid fa-right-to-bracket"></i> <span data-i18n="btn_login">TIZIMGA KIRISH</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Register Form -->
+            <div class="modal-form-content hidden" id="modal-register-form-box">
+                <form id="register-form" class="gaming-form">
+                    <div class="form-group">
+                        <label for="register-username" data-i18n="lbl_username">Foydalanuvchi nomi</label>
+                        <input type="text" id="register-username" required placeholder="Foydalanuvchi nomingiz (kamida 3 harf)..." class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email" data-i18n="lbl_email">Elektron pochta</label>
+                        <input type="email" id="register-email" required placeholder="example@mail.com" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password" data-i18n="lbl_password">Parol</label>
+                        <input type="password" id="register-password" required placeholder="Parol yarating (kamida 6 ta belgi)..." class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-avatar" data-i18n="lbl_avatar">Avatar tanglang</label>
+                        <select id="register-avatar" class="form-control">
+                            <option value="https://api.dicebear.com/7.x/adventurer/svg?seed=Felix">Warrior - Felix</option>
+                            <option value="https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka">Taoist - Aneka</option>
+                            <option value="https://api.dicebear.com/7.x/adventurer/svg?seed=Jack">Wizard - Jack</option>
+                            <option value="https://api.dicebear.com/7.x/adventurer/svg?seed=Milo">Knight - Milo</option>
+                            <option value="https://api.dicebear.com/7.x/adventurer/svg?seed=Bella">Assassin - Bella</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-gold-glow btn-full">
+                        <i class="fa-solid fa-user-plus"></i> <span data-i18n="btn_register">RO'YXATDAN O'TISH</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROFILE MODAL -->
+    <div class="modal-backdrop hidden" id="profile-modal">
+        <div class="modal-card profile-details-modal-card">
+            <button class="modal-close" id="close-profile-modal-btn">&times;</button>
+            <h2 class="modal-title text-gold text-center" data-i18n="user_profile_details">FOYDALANUVCHI PROFILI</h2>
+            
+            <div class="profile-modal-body" id="profile-modal-content">
+                <!-- Loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Core App Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
