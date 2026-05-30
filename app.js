@@ -318,60 +318,54 @@ class Database {
             try {
                 const usersRef = collection(db, "users");
                 
-                // Cleanup Migration: Remove old dummy users and add STEN and StatistiX
-                const qAdmin = query(usersRef, where("username", "==", "AdminUzSecret"));
-                const adminSnap = await getDocs(qAdmin);
-                if (!adminSnap.empty) {
-                    console.log("🔄 Migration: Cleaning up old dummy users...");
-                    const usernamesToDelete = ["AdminUzSecret", "DragonKnight", "WarriorUz", "123123", "TaoistSecrets", "WizardFanatic"];
-                    for (const name of usernamesToDelete) {
-                        // Delete any document with this username
-                        const qDel = query(usersRef, where("username", "==", name));
-                        const delSnap = await getDocs(qDel);
-                        for (const docRef of delSnap.docs) {
-                            await deleteDoc(doc(db, "users", docRef.id));
-                        }
-                        // Also delete specific seed doc IDs if they exist
-                        try {
-                            await deleteDoc(doc(db, "users", "seed_" + name));
-                        } catch (err) {}
+                // Targeted dummy user cleanup (Runs unconditionally on startup to keep database pristine)
+                const dummyNames = ["optimusbrr", "AdminUzSecret", "DragonKnight", "WarriorUz", "123123", "TaoistSecrets", "WizardFanatic"];
+                for (const name of dummyNames) {
+                    const qDel = query(usersRef, where("username", "==", name));
+                    const delSnap = await getDocs(qDel);
+                    for (const docRef of delSnap.docs) {
+                        console.log(`🗑️ Deleting dummy user: ${name}`);
+                        await deleteDoc(doc(db, "users", docRef.id));
                     }
-                    
-                    // Add STEN
-                    await setDoc(doc(db, "users", "seed_STEN"), {
-                        username: "STEN",
-                        email: "sten@mir2.uz",
-                        password: "294753618a",
-                        role: "SuperAdmin",
-                        avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack",
-                        posts: 124,
-                        likes: 312,
-                        points: 870,
-                        regDate: "2026-05-31"
-                    });
-
-                    // Add StatistiX
-                    await setDoc(doc(db, "users", "seed_StatistiX"), {
-                        username: "StatistiX",
-                        email: "statistix@mir2.uz",
-                        password: "294753618a",
-                        role: "SuperAdmin",
-                        avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix",
-                        posts: 152,
-                        likes: 384,
-                        points: 920,
-                        regDate: "2026-05-31"
-                    });
-                    
-                    console.log("✓ Migration completed!");
+                    // Also delete seed_ prefixed doc if it exists
+                    try {
+                        await deleteDoc(doc(db, "users", "seed_" + name));
+                    } catch (err) {}
                 }
                 
-                const snapshot = await getDocs(query(usersRef, limit(1)));
-                if (snapshot.empty) {
-                    await this.seedFirebase();
-                }
+                // Dynamic SuperAdmin Promotion for STEN and StatistiX
+                const qSten = query(usersRef, where("username", "==", "STEN"));
+                const stenSnap = await getDocs(qSten);
+                stenSnap.forEach(async (docRef) => {
+                    const data = docRef.data();
+                    if (data.role !== "SuperAdmin" || data.points < 800) {
+                        console.log("🚀 Promoting STEN to SuperAdmin...");
+                        await updateDoc(doc(db, "users", docRef.id), {
+                            role: "SuperAdmin",
+                            points: 900,
+                            likes: 312,
+                            posts: 124
+                        });
+                    }
+                });
+
+                const qStat = query(usersRef, where("username", "==", "StatistiX"));
+                const statSnap = await getDocs(qStat);
+                statSnap.forEach(async (docRef) => {
+                    const data = docRef.data();
+                    if (data.role !== "SuperAdmin" || data.points < 800) {
+                        console.log("🚀 Promoting StatistiX to SuperAdmin...");
+                        await updateDoc(doc(db, "users", docRef.id), {
+                            role: "SuperAdmin",
+                            points: 950,
+                            likes: 384,
+                            posts: 152
+                        });
+                    }
+                });
+                
             } catch (e) {
-                console.error("Firestore seeding verification failed.", e);
+                console.error("Firestore database migration failed.", e);
             }
         } else {
             const users = this.getData('mir2_users');
