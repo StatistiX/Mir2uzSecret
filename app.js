@@ -25,48 +25,7 @@ let db = null;
 let initializeApp, getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged;
 let getFirestore, collection, addDoc, getDoc, getDocs, doc, setDoc, updateDoc, query, orderBy, limit, onSnapshot, where, deleteDoc, serverTimestamp;
 
-if (isFirebaseConfigured) {
-    try {
-        const firebaseAppModule = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
-        const firebaseAuthModule = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
-        const firebaseFirestoreModule = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
-
-        initializeApp = firebaseAppModule.initializeApp;
-        
-        getAuth = firebaseAuthModule.getAuth;
-        signInWithEmailAndPassword = firebaseAuthModule.signInWithEmailAndPassword;
-        createUserWithEmailAndPassword = firebaseAuthModule.createUserWithEmailAndPassword;
-        signOut = firebaseAuthModule.signOut;
-        onAuthStateChanged = firebaseAuthModule.onAuthStateChanged;
-        
-        getFirestore = firebaseFirestoreModule.getFirestore;
-        collection = firebaseFirestoreModule.collection;
-        addDoc = firebaseFirestoreModule.addDoc;
-        getDoc = firebaseFirestoreModule.getDoc;
-        getDocs = firebaseFirestoreModule.getDocs;
-        doc = firebaseFirestoreModule.doc;
-        setDoc = firebaseFirestoreModule.setDoc;
-        updateDoc = firebaseFirestoreModule.updateDoc;
-        query = firebaseFirestoreModule.query;
-        orderBy = firebaseFirestoreModule.orderBy;
-        limit = firebaseFirestoreModule.limit;
-        onSnapshot = firebaseFirestoreModule.onSnapshot;
-        where = firebaseFirestoreModule.where;
-        deleteDoc = firebaseFirestoreModule.deleteDoc;
-        serverTimestamp = firebaseFirestoreModule.serverTimestamp;
-
-        const app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-        db = getFirestore(app);
-        firebaseMode = true;
-        console.log("🔥 Google Firebase connected successfully in Global Real-time Mode!");
-    } catch (e) {
-        console.error("Firebase connection failed. Falling back to Local Mode.", e);
-        firebaseMode = false;
-    }
-} else {
-    console.log("🔔 Running in Local Mode. Paste your configuration keys in app.js to enable global database syncing!");
-}
+// Firebase will be initialized inside DOMContentLoaded dynamically to prevent top-level await syntax errors in some browsers.
 
 // ==========================================================================
 // 1. DYNAMIC TRANSLATION DICTIONARY
@@ -727,6 +686,50 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     // Dynamic Route/Page Checking
     const activePage = document.body.getAttribute("data-page");
+
+    // Initialize Firebase dynamically to avoid top-level await syntax issues
+    if (isFirebaseConfigured) {
+        try {
+            const firebaseAppModule = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
+            const firebaseAuthModule = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+            const firebaseFirestoreModule = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+
+            initializeApp = firebaseAppModule.initializeApp;
+            
+            getAuth = firebaseAuthModule.getAuth;
+            signInWithEmailAndPassword = firebaseAuthModule.signInWithEmailAndPassword;
+            createUserWithEmailAndPassword = firebaseAuthModule.createUserWithEmailAndPassword;
+            signOut = firebaseAuthModule.signOut;
+            onAuthStateChanged = firebaseAuthModule.onAuthStateChanged;
+            
+            getFirestore = firebaseFirestoreModule.getFirestore;
+            collection = firebaseFirestoreModule.collection;
+            addDoc = firebaseFirestoreModule.addDoc;
+            getDoc = firebaseFirestoreModule.getDoc;
+            getDocs = firebaseFirestoreModule.getDocs;
+            doc = firebaseFirestoreModule.doc;
+            setDoc = firebaseFirestoreModule.setDoc;
+            updateDoc = firebaseFirestoreModule.updateDoc;
+            query = firebaseFirestoreModule.query;
+            orderBy = firebaseFirestoreModule.orderBy;
+            limit = firebaseFirestoreModule.limit;
+            onSnapshot = firebaseFirestoreModule.onSnapshot;
+            where = firebaseFirestoreModule.where;
+            deleteDoc = firebaseFirestoreModule.deleteDoc;
+            serverTimestamp = firebaseFirestoreModule.serverTimestamp;
+
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            firebaseMode = true;
+            console.log("🔥 Google Firebase connected successfully in Global Real-time Mode!");
+        } catch (e) {
+            console.error("Firebase connection failed. Falling back to Local Mode.", e);
+            firebaseMode = false;
+        }
+    } else {
+        console.log("🔔 Running in Local Mode. Paste your configuration keys in app.js to enable global database syncing!");
+    }
 
     // Initialize Database (Seeds collections if needed)
     await Database.init();
