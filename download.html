@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legend of Mir 2 UZ SECRET - Bosh Sahifa</title>
+    <title>Legend of Mir 2 UZ SECRET - O'yinni Yuklab Olish</title>
     
     <!-- SEO Meta Tags -->
     <meta name="description" content="Legend of Mir 2 UZ SECRET - O'zbekistondagi eng mashhur va eng epik MMORPG o'yinining rasmiy jamoat sayti va forumi. Forum, jonli chat, yangiliklar va boshqalar.">
@@ -23,7 +23,7 @@
     <!-- Custom Style Sheet -->
     <link rel="stylesheet" href="style.css">
 </head>
-<body data-page="home">
+<body data-page="download">
 
     <!-- Gaming Background Glows -->
     <div class="bg-glow bg-glow-1"></div>
@@ -142,7 +142,7 @@
                 <nav class="sidebar-card nav-panel">
                     <h4 class="card-title" data-i18n="navigation">NAVIGATSIYA</h4>
                     <div class="nav-list">
-                        <a href="index.html" class="nav-item active">
+                        <a href="index.html" class="nav-item">
                             <i class="fa-solid fa-house"></i>
                             <span data-i18n="nav_home">Bosh sahifa & Yangiliklar</span>
                         </a>
@@ -155,7 +155,7 @@
                             <span data-i18n="nav_chat">Global Shoutbox Chat</span>
                             <span class="badge badge-red pulse" id="chat-badge-count">9+</span>
                         </a>
-                        <a href="download.html" class="nav-item" id="nav-item-download">
+                        <a href="download.html" class="nav-item active" id="nav-item-download">
                             <i class="fa-solid fa-download"></i>
                             <span data-i18n="nav_download">Yuklab olish</span>
                         </a>
@@ -198,15 +198,17 @@
             <!-- MAIN CONTENT AREA -->
             <main class="main-content">
                 
-                <!-- 1. HOME & NEWS PANEL -->
-                <section class="content-tab" id="tab-home">
+                <!-- DOWNLOAD PANEL -->
+                <section class="content-tab" id="tab-download">
                     <div class="section-header">
-                        <h2><i class="fa-solid fa-bullhorn text-gold"></i> <span data-i18n="latest_news">SO'NGGI YANGILIKLAR & PATCHLAR</span></h2>
-                        <a href="admin.html" class="btn btn-sm btn-primary hidden" id="admin-create-news-btn" data-i18n="add_news">Yangilik qo'shish</a>
+                        <h2><i class="fa-solid fa-download text-gold animate-pulse"></i> <span>O'YIN FAYLLARINI YUKLAB OLISH</span></h2>
+                        <button class="btn btn-sm btn-primary hidden" id="admin-add-download-btn">
+                            <i class="fa-solid fa-plus"></i> Yangi fayl qo'shish
+                        </button>
                     </div>
 
-                    <div id="news-container" class="news-list-grid">
-                        <!-- News posts injected dynamically by JS -->
+                    <div id="downloads-container" class="downloads-list-grid">
+                        <!-- Downloads list injected dynamically by JS -->
                     </div>
                 </section>
 

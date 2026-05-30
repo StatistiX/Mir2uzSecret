@@ -50,6 +50,7 @@ const dictionary = {
         nav_home: "Bosh sahifa & Yangiliklar",
         nav_forum: "Sayt Forumi",
         nav_chat: "Global Shoutbox Chat",
+        nav_download: "Yuklab olish",
         nav_admin: "Admin Panel",
         server_info: "SERVER MA'LUMOTLARI",
         server_version: "Versiya:",
@@ -133,6 +134,7 @@ const dictionary = {
         nav_home: "Главная & Новости",
         nav_forum: "Форум сайта",
         nav_chat: "Глобальный чат (Shoutbox)",
+        nav_download: "Скачать игру",
         nav_admin: "Админ Панель",
         server_info: "ИНФОРМАЦИЯ О СЕРВЕРЕ",
         server_version: "Версия:",
@@ -216,6 +218,7 @@ const dictionary = {
         nav_home: "Home & News",
         nav_forum: "Site Forum",
         nav_chat: "Global Shoutbox Chat",
+        nav_download: "Download Game",
         nav_admin: "Admin Panel",
         server_info: "SERVER STATISTICS",
         server_version: "Version:",
@@ -963,6 +966,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else if (activePage === 'chat') {
         renderShoutbox();
         scrollChatToBottom();
+    } else if (activePage === 'download') {
+        renderDownloads();
     }
 
     // ==========================================================================
@@ -985,6 +990,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (activePage === 'home') renderNews();
             if (activePage === 'forum') renderForumTopics();
             if (activePage === 'chat') renderShoutbox();
+            if (activePage === 'download') renderDownloads();
         });
     });
 
@@ -2693,4 +2699,404 @@ function showLocalModeBanner() {
     banner.style.cssText = "background: linear-gradient(90deg, #b8860b, #8b0000); color: #ffffff; text-align: center; padding: 8px 15px; font-family: var(--font-body); font-size: 0.82rem; font-weight: 500; letter-spacing: 0.5px; border-bottom: 2px solid var(--border-gold); text-shadow: 1px 1px 2px #000000; display: flex; align-items: center; justify-content: center; gap: 8px; z-index: 9999; position: relative;";
     banner.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-gold animate-pulse"></i> <span>Saytingiz hozircha <strong>Lokal Rejimda</strong> ishlayapti. Uni global tarmoqqa ulash uchun <code>app.js</code> faylining eng tepasiga o'zingizning bepul Firebase kalitlaringizni joylashtiring!</span>`;
     document.body.prepend(banner);
+}
+
+// ==========================================================================
+// 17. COMMUNITY DOWNLOADS MANAGEMENT (FIRESTORE & LOCAL FALLBACK)
+// ==========================================================================
+const defaultDownloads = [
+    {
+        id: "dl_1",
+        title: "Mir 2 UZ SECRET Full Client",
+        size: "1.85 GB",
+        desc: "O'yinning to'liq o'rnatuvchi paketi (Full Client). Barcha xaritalar, tovushlar, 3D model teksturalari va yangilanishlar kiritilgan. O'rnatgandan so'ng to'g'ridan-to'g'ri o'yinga kirishingiz mumkin.",
+        links: [
+            { name: "Google Drive", url: "https://drive.google.com", type: "google-drive" },
+            { name: "Yandex Disk", url: "https://disk.yandex.ru", type: "yandex-disk" },
+            { name: "Mega.nz", url: "https://mega.nz", type: "mega-nz" }
+        ],
+        timestamp: Date.now() - 200000
+    },
+    {
+        id: "dl_2",
+        title: "Secret Patch v1.0.0 (Oltin Versiya)",
+        size: "42 MB",
+        desc: "O'yin uchun so'nggi patch fayllari. Agarda sizda eski client bo'lsa, ushbu patchni yuklab olib, o'yin papkasiga nusxalashingiz va o'rnatishingiz kifoya.",
+        links: [
+            { name: "Mega.nz", url: "https://mega.nz", type: "mega-nz" },
+            { name: "Telegram Channel", url: "https://t.me", type: "telegram-link" }
+        ],
+        timestamp: Date.now() - 100000
+    }
+];
+
+function renderDownloads() {
+    const downloadsContainer = document.getElementById("downloads-container");
+    if (!downloadsContainer) return;
+
+    // Toggle add button visibility for StatistiX / STEN
+    const addBtn = document.getElementById("admin-add-download-btn");
+    if (addBtn) {
+        if (activeUser && (activeUser.username === 'StatistiX' || activeUser.username === 'STEN')) {
+            addBtn.classList.remove("hidden");
+            // Attach event listener once
+            addBtn.onclick = () => openAddDownloadModal();
+        } else {
+            addBtn.classList.add("hidden");
+        }
+    }
+
+    if (firebaseMode) {
+        try {
+            const dlQuery = query(collection(db, "downloads"), orderBy("timestamp", "asc"));
+            onSnapshot(dlQuery, async (snapshot) => {
+                downloadsContainer.innerHTML = "";
+                const downloadsList = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    data.id = docSnap.id;
+                    downloadsList.push(data);
+                });
+
+                if (downloadsList.length === 0) {
+                    // Seed defaults if empty
+                    for (const item of defaultDownloads) {
+                        await addDoc(collection(db, "downloads"), item);
+                    }
+                } else {
+                    displayDownloadItems(downloadsList, downloadsContainer);
+                }
+            });
+        } catch (e) {
+            console.error("Firestore downloads listener failed:", e);
+        }
+    } else {
+        let downloadsList = Database.getData('mir2_downloads');
+        if (downloadsList.length === 0) {
+            Database.setData('mir2_downloads', defaultDownloads);
+            downloadsList = defaultDownloads;
+        }
+        downloadsContainer.innerHTML = "";
+        displayDownloadItems(downloadsList, downloadsContainer);
+    }
+}
+
+function displayDownloadItems(downloadsList, container) {
+    if (downloadsList.length === 0) {
+        container.innerHTML = `<div class="download-card" style="padding:20px; text-align:center; color:var(--text-muted);">Yuklab olish uchun fayllar mavjud emas.</div>`;
+        return;
+    }
+
+    downloadsList.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "download-card";
+
+        // Build links markup
+        let linksHTML = "";
+        if (item.links && item.links.length > 0) {
+            item.links.forEach(link => {
+                let iconClass = "fa-solid fa-download";
+                if (link.type === "google-drive") iconClass = "fa-brands fa-google-drive";
+                else if (link.type === "yandex-disk") iconClass = "fa-solid fa-cloud";
+                else if (link.type === "mega-nz") iconClass = "fa-solid fa-server";
+                else if (link.type === "telegram-link") iconClass = "fa-brands fa-telegram";
+
+                linksHTML += `
+                    <a href="${escapeHTML(link.url)}" target="_blank" class="download-link-btn ${link.type}">
+                        <i class="${iconClass}"></i> ${escapeHTML(link.name)}
+                    </a>
+                `;
+            });
+        } else {
+            linksHTML = `<span style="color:var(--text-muted); font-size:0.85rem;">Havolalar mavjud emas</span>`;
+        }
+
+        // Admin buttons
+        let adminFooter = "";
+        if (activeUser && (activeUser.username === 'StatistiX' || activeUser.username === 'STEN')) {
+            adminFooter = `
+                <div class="download-card-footer">
+                    <button class="btn btn-sm btn-primary edit-dl-btn" data-id="${item.id}" style="padding:4px 10px; font-size:0.7rem;">
+                        <i class="fa-solid fa-pen-to-square"></i> Tahrirlash
+                    </button>
+                    <button class="btn btn-sm btn-danger btn-crimson delete-dl-btn" data-id="${item.id}" style="padding:4px 10px; font-size:0.7rem;">
+                        <i class="fa-solid fa-trash"></i> O'chirish
+                    </button>
+                </div>
+            `;
+        }
+
+        card.innerHTML = `
+            <div class="download-header">
+                <div class="download-title-area">
+                    <h3>${escapeHTML(item.title)}</h3>
+                </div>
+                <span class="download-size-badge"><i class="fa-solid fa-file-zipper"></i> ${escapeHTML(item.size)}</span>
+            </div>
+            <div class="download-body">
+                <p class="download-desc">${escapeHTML(item.desc)}</p>
+                <div class="download-links-grid">
+                    ${linksHTML}
+                </div>
+            </div>
+            ${adminFooter}
+        `;
+        container.appendChild(card);
+    });
+
+    // Attach listeners
+    const delBtns = container.querySelectorAll(".delete-dl-btn");
+    delBtns.forEach(btn => {
+        btn.onclick = async () => {
+            if (!activeUser || (activeUser.username !== 'StatistiX' && activeUser.username !== 'STEN')) {
+                alert(getLocaleWord('alert_unauthorized'));
+                return;
+            }
+            const id = btn.getAttribute("data-id");
+            if (confirm("Ushbu fayl yuklash kartasini o'chirib tashlamoqchimisiz?")) {
+                if (firebaseMode) {
+                    await deleteDoc(doc(db, "downloads", id));
+                } else {
+                    let list = Database.getData('mir2_downloads');
+                    list = list.filter(d => String(d.id) !== String(id));
+                    Database.setData('mir2_downloads', list);
+                    renderDownloads();
+                }
+            }
+        };
+    });
+
+    const editBtns = container.querySelectorAll(".edit-dl-btn");
+    editBtns.forEach(btn => {
+        btn.onclick = () => {
+            if (!activeUser || (activeUser.username !== 'StatistiX' && activeUser.username !== 'STEN')) {
+                alert(getLocaleWord('alert_unauthorized'));
+                return;
+            }
+            const id = btn.getAttribute("data-id");
+            openEditDownloadModal(id, downloadsList);
+        };
+    });
+}
+
+function openAddDownloadModal() {
+    const modal = document.createElement("div");
+    modal.className = "modal-backdrop";
+    modal.id = "add-dl-modal";
+    modal.style.zIndex = "99999";
+
+    modal.innerHTML = `
+        <div class="modal-card" style="max-width: 600px;">
+            <button class="modal-close" id="close-add-dl-modal">&times;</button>
+            <h2 class="modal-title text-gold text-center" style="margin-bottom: 20px;"><i class="fa-solid fa-plus"></i> YANGI YUKLASH FAYLI QO'SHISH</h2>
+            
+            <form id="add-dl-form" class="gaming-form">
+                <div class="form-group">
+                    <label for="add-dl-title">Fayl nomi / Sarlavhasi</label>
+                    <input type="text" id="add-dl-title" required class="form-control" placeholder="Masalan: Mir 2 UZ SECRET Full Client...">
+                </div>
+                <div class="form-group">
+                    <label for="add-dl-size">Fayl hajmi (Size)</label>
+                    <input type="text" id="add-dl-size" required class="form-control" placeholder="Masalan: 1.85 GB, 42 MB...">
+                </div>
+                <div class="form-group">
+                    <label for="add-dl-desc">Fayl haqida izoh (Tavsif)</label>
+                    <textarea id="add-dl-desc" required class="form-control" style="min-height: 80px; font-family:inherit;" placeholder="Fayl va uni o'rnatish haqida qisqacha tavsif yozing..."></textarea>
+                </div>
+                
+                <h4 style="color:var(--gold); font-family:var(--font-heading); margin:15px 0 10px 0; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:5px;">YUKLAB OLISH HAVOLALARI (SILKALARI)</h4>
+                
+                <div class="form-group">
+                    <label for="add-dl-gdrive"><i class="fa-brands fa-google-drive"></i> Google Drive URL (Ixtiyoriy)</label>
+                    <input type="text" id="add-dl-gdrive" class="form-control" placeholder="https://drive.google.com/...">
+                </div>
+                <div class="form-group">
+                    <label for="add-dl-ydisk"><i class="fa-solid fa-cloud"></i> Yandex Disk URL (Ixtiyoriy)</label>
+                    <input type="text" id="add-dl-ydisk" class="form-control" placeholder="https://disk.yandex.ru/...">
+                </div>
+                <div class="form-group">
+                    <label for="add-dl-mega"><i class="fa-solid fa-server"></i> Mega.nz URL (Ixtiyoriy)</label>
+                    <input type="text" id="add-dl-mega" class="form-control" placeholder="https://mega.nz/...">
+                </div>
+                <div class="form-group">
+                    <label for="add-dl-tg"><i class="fa-brands fa-telegram"></i> Telegram Kanal / Fayl URL (Ixtiyoriy)</label>
+                    <input type="text" id="add-dl-tg" class="form-control" placeholder="https://t.me/...">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-gold-glow btn-full" style="margin-top:15px;">
+                    <i class="fa-solid fa-save"></i> FAYLNI QO'SHISH
+                </button>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelector("#close-add-dl-modal").onclick = () => modal.remove();
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+    modal.querySelector("#add-dl-form").onsubmit = async (e) => {
+        e.preventDefault();
+        if (!activeUser || (activeUser.username !== 'StatistiX' && activeUser.username !== 'STEN')) {
+            alert(getLocaleWord('alert_unauthorized'));
+            return;
+        }
+
+        const title = modal.querySelector("#add-dl-title").value;
+        const size = modal.querySelector("#add-dl-size").value;
+        const desc = modal.querySelector("#add-dl-desc").value;
+        
+        const gdrive = modal.querySelector("#add-dl-gdrive").value;
+        const ydisk = modal.querySelector("#add-dl-ydisk").value;
+        const mega = modal.querySelector("#add-dl-mega").value;
+        const tg = modal.querySelector("#add-dl-tg").value;
+
+        const links = [];
+        if (gdrive) links.push({ name: "Google Drive", url: gdrive, type: "google-drive" });
+        if (ydisk) links.push({ name: "Yandex Disk", url: ydisk, type: "yandex-disk" });
+        if (mega) links.push({ name: "Mega.nz", url: mega, type: "mega-nz" });
+        if (tg) links.push({ name: "Telegram Channel", url: tg, type: "telegram-link" });
+
+        const newDownload = {
+            title,
+            size,
+            desc,
+            links,
+            timestamp: Date.now()
+        };
+
+        if (firebaseMode) {
+            try {
+                await addDoc(collection(db, "downloads"), newDownload);
+                alert("Yangi yuklash fayli muvaffaqiyatli qo'shildi!");
+                modal.remove();
+            } catch (err) {
+                alert("Xato yuz berdi: " + err.message);
+            }
+        } else {
+            const list = Database.getData('mir2_downloads');
+            newDownload.id = "dl_" + Date.now();
+            list.push(newDownload);
+            Database.setData('mir2_downloads', list);
+            alert("Yangi yuklash fayli muvaffaqiyatli qo'shildi!");
+            modal.remove();
+            renderDownloads();
+        }
+    };
+}
+
+function openEditDownloadModal(id, downloadsList) {
+    const item = downloadsList.find(d => String(d.id) === String(id));
+    if (!item) return;
+
+    // Helper to extract existing URL
+    const getLinkUrl = (type) => {
+        const found = item.links.find(l => l.type === type);
+        return found ? found.url : "";
+    };
+
+    const modal = document.createElement("div");
+    modal.className = "modal-backdrop";
+    modal.id = "edit-dl-modal";
+    modal.style.zIndex = "99999";
+
+    modal.innerHTML = `
+        <div class="modal-card" style="max-width: 600px;">
+            <button class="modal-close" id="close-edit-dl-modal">&times;</button>
+            <h2 class="modal-title text-gold text-center" style="margin-bottom: 20px;"><i class="fa-solid fa-pen-to-square"></i> YUKLASH FAYLINI TAHRIRLASH</h2>
+            
+            <form id="edit-dl-form" class="gaming-form">
+                <div class="form-group">
+                    <label for="edit-dl-title">Fayl nomi / Sarlavhasi</label>
+                    <input type="text" id="edit-dl-title" required class="form-control" value="${escapeHTML(item.title)}">
+                </div>
+                <div class="form-group">
+                    <label for="edit-dl-size">Fayl hajmi (Size)</label>
+                    <input type="text" id="edit-dl-size" required class="form-control" value="${escapeHTML(item.size)}">
+                </div>
+                <div class="form-group">
+                    <label for="edit-dl-desc">Fayl haqida izoh (Tavsif)</label>
+                    <textarea id="edit-dl-desc" required class="form-control" style="min-height: 80px; font-family:inherit;">${item.desc}</textarea>
+                </div>
+                
+                <h4 style="color:var(--gold); font-family:var(--font-heading); margin:15px 0 10px 0; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:5px;">YUKLAB OLISH HAVOLALARI (SILKALARI)</h4>
+                
+                <div class="form-group">
+                    <label for="edit-dl-gdrive"><i class="fa-brands fa-google-drive"></i> Google Drive URL (Ixtiyoriy)</label>
+                    <input type="text" id="edit-dl-gdrive" class="form-control" value="${escapeHTML(getLinkUrl('google-drive'))}">
+                </div>
+                <div class="form-group">
+                    <label for="edit-dl-ydisk"><i class="fa-solid fa-cloud"></i> Yandex Disk URL (Ixtiyoriy)</label>
+                    <input type="text" id="edit-dl-ydisk" class="form-control" value="${escapeHTML(getLinkUrl('yandex-disk'))}">
+                </div>
+                <div class="form-group">
+                    <label for="edit-dl-mega"><i class="fa-solid fa-server"></i> Mega.nz URL (Ixtiyoriy)</label>
+                    <input type="text" id="edit-dl-mega" class="form-control" value="${escapeHTML(getLinkUrl('mega-nz'))}">
+                </div>
+                <div class="form-group">
+                    <label for="edit-dl-tg"><i class="fa-brands fa-telegram"></i> Telegram Kanal / Fayl URL (Ixtiyoriy)</label>
+                    <input type="text" id="edit-dl-tg" class="form-control" value="${escapeHTML(getLinkUrl('telegram-link'))}">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-gold-glow btn-full" style="margin-top:15px;">
+                    <i class="fa-solid fa-save"></i> O'ZGARISHLARNI SAQLASH
+                </button>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelector("#close-edit-dl-modal").onclick = () => modal.remove();
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+    modal.querySelector("#edit-dl-form").onsubmit = async (e) => {
+        e.preventDefault();
+        if (!activeUser || (activeUser.username !== 'StatistiX' && activeUser.username !== 'STEN')) {
+            alert(getLocaleWord('alert_unauthorized'));
+            return;
+        }
+
+        const title = modal.querySelector("#edit-dl-title").value;
+        const size = modal.querySelector("#edit-dl-size").value;
+        const desc = modal.querySelector("#edit-dl-desc").value;
+        
+        const gdrive = modal.querySelector("#edit-dl-gdrive").value;
+        const ydisk = modal.querySelector("#edit-dl-ydisk").value;
+        const mega = modal.querySelector("#edit-dl-mega").value;
+        const tg = modal.querySelector("#edit-dl-tg").value;
+
+        const links = [];
+        if (gdrive) links.push({ name: "Google Drive", url: gdrive, type: "google-drive" });
+        if (ydisk) links.push({ name: "Yandex Disk", url: ydisk, type: "yandex-disk" });
+        if (mega) links.push({ name: "Mega.nz", url: mega, type: "mega-nz" });
+        if (tg) links.push({ name: "Telegram Channel", url: tg, type: "telegram-link" });
+
+        const updatedDownload = {
+            title,
+            size,
+            desc,
+            links
+        };
+
+        if (firebaseMode) {
+            try {
+                await updateDoc(doc(db, "downloads", id), updatedDownload);
+                alert("Yuklash fayli muvaffaqiyatli tahrirlandi!");
+                modal.remove();
+            } catch (err) {
+                alert("Xato yuz berdi: " + err.message);
+            }
+        } else {
+            const list = Database.getData('mir2_downloads');
+            const index = list.findIndex(d => String(d.id) === String(id));
+            if (index !== -1) {
+                list[index] = { ...list[index], ...updatedDownload };
+                Database.setData('mir2_downloads', list);
+                alert("Yuklash fayli muvaffaqiyatli tahrirlandi!");
+                modal.remove();
+                renderDownloads();
+            }
+        }
+    };
 }
