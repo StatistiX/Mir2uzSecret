@@ -749,8 +749,14 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (userSnap.exists()) {
                     activeUser = userSnap.data();
                     activeUser.uid = user.uid; // store referenced UID
+                    
+                    // Mark user as online in Firestore
+                    try {
+                        await updateDoc(userDocRef, { isOnline: true });
+                    } catch (e) {
+                        console.error("Failed to mark user online:", e);
+                    }
                 } else {
-                    // Check if it was a seeded username login conversion
                     activeUser = null;
                 }
             } else {
@@ -1145,6 +1151,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (logoutBtn) {
         logoutBtn.addEventListener("click", async () => {
             if (firebaseMode) {
+                if (activeUser && activeUser.uid) {
+                    try {
+                        const userDocRef = doc(db, "users", activeUser.uid);
+                        await updateDoc(userDocRef, { isOnline: false });
+                    } catch (e) {
+                        console.error("Failed to set offline status:", e);
+                    }
+                }
                 await signOut(auth);
             } else {
                 activeUser = null;
@@ -1156,6 +1170,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         });
     }
+
+    // Dynamic unload hook to set user offline when closing tab
+    window.addEventListener("beforeunload", () => {
+        if (firebaseMode && activeUser && activeUser.uid) {
+            const userDocRef = doc(db, "users", activeUser.uid);
+            updateDoc(userDocRef, { isOnline: false });
+        }
+    });
 
     // Sidebar profiles modal trigger
     const openMyProfileBtn = document.getElementById("open-my-profile-btn");
@@ -2168,9 +2190,22 @@ function renderRatings() {
                 item.innerHTML = `
                     <span class="rating-num rank-${rankNum}">${rankNum}</span>
                     <img src="${user.avatar}" class="rating-item-avatar pointer" onclick="showUserProfileModal('${user.username}')" alt="Avatar">
-                    <div class="rating-item-info">
-                        <span class="rating-name" onclick="showUserProfileModal('${user.username}')">${user.username}</span>
-                        <span class="rating-badge role-badge ${badgeClass}" style="font-size:0.55rem; padding: 0px 5px; margin: 0; display: inline-block;">${user.role}</span>
+                    <div class="rating-item-info" style="display: flex; flex-direction: column; justify-content: center;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="rating-name" onclick="showUserProfileModal('${user.username}')" style="margin: 0; line-height: 1.2;">${user.username}</span>
+                            <span class="rating-badge role-badge ${badgeClass}" style="font-size:0.55rem; padding: 0px 5px; margin: 0; display: inline-block; line-height: 1.2;">${user.role}</span>
+                        </div>
+                        ${user.isOnline ? `
+                            <div class="status-indicator-wrap" style="display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+                                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: #2ecc71; box-shadow: 0 0 6px #2ecc71; animation: pulse-green 1.5s infinite alternate;"></span>
+                                <span style="font-size: 0.55rem; color: #2ecc71; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; line-height: 1;">Online</span>
+                            </div>
+                        ` : `
+                            <div class="status-indicator-wrap" style="display: flex; align-items: center; gap: 4px; margin-top: 2px; opacity: 0.6;">
+                                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: #95a5a6;"></span>
+                                <span style="font-size: 0.55rem; color: #95a5a6; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; line-height: 1;">Offline</span>
+                            </div>
+                        `}
                     </div>
                     <div class="rating-points">${user.points}</div>
                 `;
@@ -2193,9 +2228,22 @@ function renderRatings() {
             item.innerHTML = `
                 <span class="rating-num rank-${rankNum}">${rankNum}</span>
                 <img src="${user.avatar}" class="rating-item-avatar pointer" onclick="showUserProfileModal('${user.username}')" alt="Avatar">
-                <div class="rating-item-info">
-                    <span class="rating-name" onclick="showUserProfileModal('${user.username}')">${user.username}</span>
-                    <span class="rating-badge role-badge ${badgeClass}" style="font-size:0.55rem; padding: 0px 5px; margin: 0; display: inline-block;">${user.role}</span>
+                <div class="rating-item-info" style="display: flex; flex-direction: column; justify-content: center;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="rating-name" onclick="showUserProfileModal('${user.username}')" style="margin: 0; line-height: 1.2;">${user.username}</span>
+                        <span class="rating-badge role-badge ${badgeClass}" style="font-size:0.55rem; padding: 0px 5px; margin: 0; display: inline-block; line-height: 1.2;">${user.role}</span>
+                    </div>
+                    ${(activeUser && activeUser.username === user.username) ? `
+                        <div class="status-indicator-wrap" style="display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+                            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: #2ecc71; box-shadow: 0 0 6px #2ecc71; animation: pulse-green 1.5s infinite alternate;"></span>
+                            <span style="font-size: 0.55rem; color: #2ecc71; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; line-height: 1;">Online</span>
+                        </div>
+                    ` : `
+                        <div class="status-indicator-wrap" style="display: flex; align-items: center; gap: 4px; margin-top: 2px; opacity: 0.6;">
+                            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: #95a5a6;"></span>
+                            <span style="font-size: 0.55rem; color: #95a5a6; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; line-height: 1;">Offline</span>
+                        </div>
+                    `}
                 </div>
                 <div class="rating-points">${user.points}</div>
             `;
@@ -2235,9 +2283,17 @@ function renderAdminUsers() {
 
                 tr.innerHTML = `
                     <td>
-                        <div class="admin-user-info-row">
-                            <img src="${user.avatar}" class="admin-user-avatar" alt="Avatar">
-                            <span><strong>${user.username}</strong></span>
+                        <div class="admin-user-info-row" style="display: flex; align-items: center; gap: 10px;">
+                            <div style="position: relative; display: inline-block;">
+                                <img src="${user.avatar}" class="admin-user-avatar" alt="Avatar" style="display: block;">
+                                <span style="position: absolute; bottom: 0; right: 0; display: block; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--card-bg); background-color: ${user.isOnline ? '#2ecc71' : '#95a5a6'}; box-shadow: ${user.isOnline ? '0 0 6px #2ecc71' : 'none'};"></span>
+                            </div>
+                            <div style="display: flex; flex-direction: column;">
+                                <span><strong>${user.username}</strong></span>
+                                <span style="font-size: 0.55rem; color: ${user.isOnline ? '#2ecc71' : '#95a5a6'}; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 1px;">
+                                    ${user.isOnline ? 'Online' : 'Offline'}
+                                </span>
+                            </div>
                         </div>
                     </td>
                     <td>${dropdown}</td>
