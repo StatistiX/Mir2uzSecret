@@ -833,7 +833,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const maxPlayers = statusData.playersMax !== undefined ? statusData.playersMax : 1000;
             
             if (topPlayerCountEl) {
-                topPlayerCountEl.textContent = `${players} / ${maxPlayers}`;
+                topPlayerCountEl.textContent = `${players}`;
             }
             
             if (statusDotEl) {
