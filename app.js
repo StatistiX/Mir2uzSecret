@@ -1750,9 +1750,14 @@ function displayNewsItems(newsList, container) {
                         <span class="news-author-name"><strong>${item.author}</strong></span>
                     </div>
                     ${activeUser && (activeUser.username === 'StatistiX' || activeUser.username === 'STEN') ? 
-                        `<button class="btn btn-sm btn-danger btn-crimson delete-news-btn" data-id="${item.id}">
-                            <i class="fa-solid fa-trash"></i> O'chirish
-                         </button>` : ''
+                        `<div style="display:flex; gap:8px;">
+                            <button class="btn btn-sm btn-primary edit-news-btn" data-id="${item.id}" style="padding:4px 10px; font-size:0.75rem;">
+                                <i class="fa-solid fa-pen-to-square"></i> O'zgartirish
+                            </button>
+                            <button class="btn btn-sm btn-danger btn-crimson delete-news-btn" data-id="${item.id}" style="padding:4px 10px; font-size:0.75rem;">
+                                <i class="fa-solid fa-trash"></i> O'chirish
+                            </button>
+                         </div>` : ''
                     }
                 </div>
             </div>
@@ -1779,6 +1784,113 @@ function displayNewsItems(newsList, container) {
                 }
             }
         });
+    });
+
+    const editBtns = container.querySelectorAll(".edit-news-btn");
+    editBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+            if (!activeUser || (activeUser.username !== 'StatistiX' && activeUser.username !== 'STEN')) {
+                alert(getLocaleWord('alert_unauthorized'));
+                return;
+            }
+            const id = btn.getAttribute("data-id");
+            openEditNewsModal(id, newsList);
+        });
+    });
+}
+
+function openEditNewsModal(id, newsList) {
+    const item = newsList.find(n => String(n.id) === String(id));
+    if (!item) return;
+
+    // Create modal elements
+    const modal = document.createElement("div");
+    modal.className = "modal-backdrop";
+    modal.id = "edit-news-modal";
+    modal.style.zIndex = "99999";
+    
+    modal.innerHTML = `
+        <div class="modal-card" style="max-width: 600px;">
+            <button class="modal-close" id="close-edit-news-modal">&times;</button>
+            <h2 class="modal-title text-gold text-center" style="margin-bottom: 20px;"><i class="fa-solid fa-pen-to-square"></i> YANGILIKNI TAHRIRLASH</h2>
+            
+            <form id="edit-news-form" class="gaming-form">
+                <div class="form-group">
+                    <label for="edit-news-title">Sarlavha</label>
+                    <input type="text" id="edit-news-title" required class="form-control" value="${escapeHTML(item.title)}">
+                </div>
+                <div class="form-group">
+                    <label for="edit-news-category">Kategoriya</label>
+                    <select id="edit-news-category" class="form-control">
+                        <option value="news" ${item.category === 'news' ? 'selected' : ''}>Yangiliklar</option>
+                        <option value="patch" ${item.category === 'patch' ? 'selected' : ''}>Patchlar</option>
+                        <option value="event" ${item.category === 'event' ? 'selected' : ''}>Tadbirlar</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-news-image">Rasm URL (Yoki fayl nomi)</label>
+                    <input type="text" id="edit-news-image" class="form-control" value="${escapeHTML(item.image)}">
+                </div>
+                <div class="form-group">
+                    <label for="edit-news-content">Matn (HTML ruxsat etiladi)</label>
+                    <textarea id="edit-news-content" required class="form-control" style="min-height: 150px; font-family:inherit;">${item.content}</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-gold-glow btn-full">
+                    <i class="fa-solid fa-save"></i> O'ZGARISHLARNI SAQLASH
+                </button>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close event
+    const closeBtn = modal.querySelector("#close-edit-news-modal");
+    closeBtn.addEventListener("click", () => {
+        modal.remove();
+    });
+
+    // Close on clicking backdrop
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) modal.remove();
+    });
+
+    // Form submit
+    const form = modal.querySelector("#edit-news-form");
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        if (!activeUser || (activeUser.username !== 'StatistiX' && activeUser.username !== 'STEN')) {
+            alert(getLocaleWord('alert_unauthorized'));
+            return;
+        }
+
+        const updatedData = {
+            title: modal.querySelector("#edit-news-title").value,
+            category: modal.querySelector("#edit-news-category").value,
+            image: modal.querySelector("#edit-news-image").value,
+            content: modal.querySelector("#edit-news-content").value,
+        };
+
+        if (firebaseMode) {
+            try {
+                await updateDoc(doc(db, "news", id), updatedData);
+                alert("Yangilik muvaffaqiyatli o'zgartirildi!");
+                modal.remove();
+            } catch (err) {
+                alert("Xato yuz berdi: " + err.message);
+            }
+        } else {
+            let list = Database.getData('mir2_news');
+            const index = list.findIndex(n => String(n.id) === String(id));
+            if (index !== -1) {
+                list[index] = { ...list[index], ...updatedData };
+                Database.setData('mir2_news', list);
+                alert("Yangilik muvaffaqiyatli o'zgartirildi!");
+                modal.remove();
+                renderNews();
+            }
+        }
     });
 }
 
