@@ -76,6 +76,7 @@ const dictionary = {
         welcome_title: "MAXFIY AFSONAGA XUSH KELIBSIZ",
         server: "Server:",
         online: "FAOL",
+        offline: "OFLAYN",
         online_players: "Tizimdagi o'yinchilar:",
         ping: "Ping:",
         guest_title: "Mehmon",
@@ -155,6 +156,7 @@ const dictionary = {
         welcome_title: "ДОБРО ПОЖАЛОВАТЬ В ТАИНСТВЕННУЮ ЛЕГЕНДУ",
         server: "Сервер:",
         online: "ОНЛАЙН",
+        offline: "ОФФЛАЙН",
         online_players: "Игроков онлайн:",
         ping: "Пинг:",
         guest_title: "Гость",
@@ -234,6 +236,7 @@ const dictionary = {
         welcome_title: "WELCOME TO THE SECRET LEGEND",
         server: "Server:",
         online: "ONLINE",
+        offline: "OFFLINE",
         online_players: "Online Players:",
         ping: "Ping:",
         guest_title: "Guest",
@@ -800,6 +803,81 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     
     translatePage(currentLang);
+
+    // ==========================================================================
+    // SERVER REAL-TIME STATUS SYNC (Firestore / Local Fallback)
+    // ==========================================================================
+    const updateServerStatusUI = (statusData) => {
+        const topPlayerCountEl = document.getElementById("top-player-count");
+        const statusDotEl = document.querySelector(".status-dot");
+        const onlineTextEl = document.querySelector(".online-text");
+        
+        if (statusData) {
+            const isOnline = statusData.online;
+            const players = statusData.playersOnline !== undefined ? statusData.playersOnline : 0;
+            const maxPlayers = statusData.playersMax !== undefined ? statusData.playersMax : 1000;
+            
+            if (topPlayerCountEl) {
+                topPlayerCountEl.textContent = `${players} / ${maxPlayers}`;
+            }
+            
+            if (statusDotEl) {
+                if (isOnline) {
+                    statusDotEl.className = "status-dot online animate-pulse";
+                } else {
+                    statusDotEl.className = "status-dot offline";
+                }
+            }
+            
+            if (onlineTextEl) {
+                onlineTextEl.setAttribute("data-i18n", isOnline ? "online" : "offline");
+                onlineTextEl.textContent = getLocaleWord(isOnline ? 'online' : 'offline');
+                if (isOnline) {
+                    onlineTextEl.classList.remove("text-danger");
+                    onlineTextEl.classList.add("text-success");
+                } else {
+                    onlineTextEl.classList.remove("text-success");
+                    onlineTextEl.classList.add("text-danger");
+                }
+            }
+        }
+    };
+
+    if (firebaseMode) {
+        try {
+            onSnapshot(doc(db, "server_status", "status"), (docSnap) => {
+                if (docSnap.exists()) {
+                    updateServerStatusUI(docSnap.data());
+                } else {
+                    // Seed initial offline status in Firestore if not exists
+                    setDoc(doc(db, "server_status", "status"), {
+                        online: false,
+                        playersOnline: 0,
+                        playersMax: 1000,
+                        lastUpdated: serverTimestamp()
+                    });
+                }
+            });
+        } catch (e) {
+            console.error("Failed to set up server status real-time sync:", e);
+        }
+    } else {
+        // Local fallback (Simulated live update / periodic toggle)
+        setInterval(() => {
+            const simulatedPlayers = Math.floor(Math.random() * 20) + 150; // simulated
+            updateServerStatusUI({
+                online: true,
+                playersOnline: simulatedPlayers,
+                playersMax: 1000
+            });
+        }, 5000);
+        // Instant trigger on page load
+        updateServerStatusUI({
+            online: true,
+            playersOnline: 174,
+            playersMax: 1000
+        });
+    }
 
     // INITIAL RENDER PAGE SPECIFIC PANELS & SIDEBARS
     renderSidebarShoutbox();

@@ -193,6 +193,10 @@ body {
     background-color: var(--success);
     box-shadow: 0 0 10px var(--success);
 }
+.status-dot.offline {
+    background-color: var(--crimson);
+    box-shadow: 0 0 10px var(--crimson);
+}
 .status-item .label {
     color: var(--text-muted);
 }
