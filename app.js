@@ -1,9 +1,76 @@
 /* ==========================================================================
    LEGEND OF MIR 2 UZ SECRET - MULTI-PAGE APPLICATION ENGINE
-   Featuring: Safe Storage, Route Detection, Auth Syncing & Null-Safe Bindings
+   Featuring: Google Firebase (Auth & Real-time Cloud Firestore) + Local Fallback
    ========================================================================== */
 
+// ==========================================================================
+// 0. FIREBASE GLOBAL CONFIGURATION & INTEGRATION ENGINE
+// ==========================================================================
+// [IMPORTANT] Paste your free Firebase Web App config keys below!
+const firebaseConfig = {
+    apiKey: "AIzaSyDLy0MoIvsY5QxdOre5jI9kJRmjslSd7Mg",
+    authDomain: "legendofmir2uzsecret.firebaseapp.com",
+    projectId: "legendofmir2uzsecret",
+    storageBucket: "legendofmir2uzsecret.firebasestorage.app",
+    messagingSenderId: "14819316937",
+    appId: "1:14819316937:web:a90cbdbe5dac5cd1497f58"
+};
+
+const isFirebaseConfigured = firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("YOUR_");
+let firebaseMode = false;
+let auth = null;
+let db = null;
+
+// Firebase Modular SDK Imports (Initialized dynamically if configured)
+let initializeApp, getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged;
+let getFirestore, collection, addDoc, getDoc, getDocs, doc, setDoc, updateDoc, query, orderBy, limit, onSnapshot, where, deleteDoc, serverTimestamp;
+
+if (isFirebaseConfigured) {
+    try {
+        const firebaseAppModule = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
+        const firebaseAuthModule = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+        const firebaseFirestoreModule = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+
+        initializeApp = firebaseAppModule.initializeApp;
+        
+        getAuth = firebaseAuthModule.getAuth;
+        signInWithEmailAndPassword = firebaseAuthModule.signInWithEmailAndPassword;
+        createUserWithEmailAndPassword = firebaseAuthModule.createUserWithEmailAndPassword;
+        signOut = firebaseAuthModule.signOut;
+        onAuthStateChanged = firebaseAuthModule.onAuthStateChanged;
+        
+        getFirestore = firebaseFirestoreModule.getFirestore;
+        collection = firebaseFirestoreModule.collection;
+        addDoc = firebaseFirestoreModule.addDoc;
+        getDoc = firebaseFirestoreModule.getDoc;
+        getDocs = firebaseFirestoreModule.getDocs;
+        doc = firebaseFirestoreModule.doc;
+        setDoc = firebaseFirestoreModule.setDoc;
+        updateDoc = firebaseFirestoreModule.updateDoc;
+        query = firebaseFirestoreModule.query;
+        orderBy = firebaseFirestoreModule.orderBy;
+        limit = firebaseFirestoreModule.limit;
+        onSnapshot = firebaseFirestoreModule.onSnapshot;
+        where = firebaseFirestoreModule.where;
+        deleteDoc = firebaseFirestoreModule.deleteDoc;
+        serverTimestamp = firebaseFirestoreModule.serverTimestamp;
+
+        const app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        firebaseMode = true;
+        console.log("🔥 Google Firebase connected successfully in Global Real-time Mode!");
+    } catch (e) {
+        console.error("Firebase connection failed. Falling back to Local Mode.", e);
+        firebaseMode = false;
+    }
+} else {
+    console.log("🔔 Running in Local Mode. Paste your configuration keys in app.js to enable global database syncing!");
+}
+
+// ==========================================================================
 // 1. DYNAMIC TRANSLATION DICTIONARY
+// ==========================================================================
 const dictionary = {
     uz: {
         welcome_title: "MAXFIY AFSONAGA XUSH KELIBSIZ",
@@ -280,19 +347,31 @@ const safeStorage = {
 };
 
 // ==========================================================================
-// 3. DATABASE CONTROLLER
+// 3. DATABASE CONTROLLER (LOCAL & FIREBASE INTEGRATED)
 // ==========================================================================
 class Database {
-    static init() {
-        const users = this.getData('mir2_users');
-        const hasOptimus = users.some(u => u.email === "optimusbrr@gmail.com");
-        if (!hasOptimus) {
-            try { localStorage.clear(); } catch (e) {}
-            this.seed();
+    static async init() {
+        if (firebaseMode) {
+            try {
+                const usersRef = collection(db, "users");
+                const snapshot = await getDocs(query(usersRef, limit(1)));
+                if (snapshot.empty) {
+                    await this.seedFirebase();
+                }
+            } catch (e) {
+                console.error("Firestore seeding verification failed.", e);
+            }
+        } else {
+            const users = this.getData('mir2_users');
+            const hasOptimus = users.some(u => u.email === "optimusbrr@gmail.com");
+            if (!hasOptimus) {
+                try { localStorage.clear(); } catch (e) {}
+                this.seedLocal();
+            }
         }
     }
 
-    static seed() {
+    static seedLocal() {
         const users = [
             {
                 username: "optimusbrr",
@@ -429,7 +508,7 @@ class Database {
                 category: "guides",
                 content: `Salom hammaga! Ko'pchilik yangi kelganlar qanday qilib tez darajani (Level) oshirish haqida so'rashmoqda. Quyida sizga kichik qo'llanma taqdim etaman:
                 
-                * Level 1-7: Bichon shahrining atrofida joylashgan yovvoyi mushuklar (Cats) va kiyiklarni (Deers) o'ldiring.
+                * Level 1-7: Bichon shahrining atrofida joylagan yovvoyi mushuklar (Cats) va kiyiklarni (Deers) o'ldiring.
                 * Level 7-15: Bichon g'origa (Bichon Cave) yo'l oling va Skeletlarni ovlang.
                 * Level 15-22: Natural Cave yoki Wooma Temple birinchi qavatlarida zombilar bilan jang qiling.
                 * Level 22-35: Stone Tomb (Cho'l g'ori) eng mukammal joy hisoblanadi. Guruh (Party) bo'lib kirsangiz ko'p EXP olasiz.
@@ -456,21 +535,24 @@ class Database {
                 role: "Legendary Player",
                 avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Milo",
                 message: "Salom hammaga! Serverda kimdir savdo qilyaptimi?",
-                time: "20:30"
+                time: "20:30",
+                timestamp: Date.now() - 300000
             },
             {
                 username: "TaoistSecrets",
                 role: "Active Explorer",
                 avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka",
                 message: "Salom! Men yangi qilich sotmoqchiman, level 25 dagi.",
-                time: "20:32"
+                time: "20:32",
+                timestamp: Date.now() - 150000
             },
             {
                 username: "DragonKnight",
                 role: "Moderator",
                 avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack",
                 message: "Hamma gaplar savdo-sotiq bo'limida muhokama qilinsin. Qoidalarga rioya qilamiz do'stlar.",
-                time: "20:35"
+                time: "20:35",
+                timestamp: Date.now() - 5000
             }
         ];
 
@@ -478,6 +560,152 @@ class Database {
         safeStorage.setItem('mir2_news', JSON.stringify(news));
         safeStorage.setItem('mir2_topics', JSON.stringify(topics));
         safeStorage.setItem('mir2_chat', JSON.stringify(chat));
+    }
+
+    static async seedFirebase() {
+        console.log("🔥 Seeding Cloud Firestore with default premium data...");
+        // Re-use seed lists
+        const users = [
+            {
+                username: "optimusbrr",
+                email: "optimusbrr@gmail.com",
+                password: "Rambler2911aa",
+                role: "SuperAdmin",
+                avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix",
+                posts: 152,
+                likes: 384,
+                points: 920,
+                regDate: "2026-05-30"
+            },
+            {
+                username: "AdminUzSecret",
+                email: "admin@mir2.uz",
+                password: "adminsecret",
+                role: "SuperAdmin",
+                avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix",
+                posts: 124,
+                likes: 312,
+                points: 870,
+                regDate: "2026-02-15"
+            },
+            {
+                username: "DragonKnight",
+                email: "dragon@gmail.com",
+                password: "dragonsecret",
+                role: "Moderator",
+                avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack",
+                posts: 48,
+                likes: 92,
+                points: 330,
+                regDate: "2026-03-01"
+            },
+            {
+                username: "WarriorUz",
+                email: "warrioruz@mail.ru",
+                password: "password123",
+                role: "Legendary Player",
+                avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Milo",
+                posts: 26,
+                likes: 45,
+                points: 175,
+                regDate: "2026-04-10"
+            }
+        ];
+
+        const news = [
+            {
+                title: "Legend of Mir 2 UZ SECRET - Serverning Rasmiy O'yin Boshlanishi!",
+                content: `Salom, aziz jangchilar! Biz sizga mamnuniyat bilan <strong>Legend of Mir 2 UZ SECRET</strong> serverining rasmiy ochilishini e'lon qilamiz. Server o'zbek o'yinchilari uchun maxsus va eng yuqori darajada sozlangan bo'lib, mukammal barqarorlikka ega. Saytimiz orqali siz o'z fikrlaringizni o'rtoqlashishingiz, savdo-sotiq qilishingiz va yangi do'stlar topishingiz mumkin. Serverimizga qo'shiling va haqiqiy jang afsonasiga aylaning!`,
+                image: "banner.png",
+                date: "2026-05-28",
+                author: "AdminUzSecret",
+                category: "news",
+                timestamp: Date.now() - 86400000
+            },
+            {
+                title: "Patch 1.2: Gildiyalar Urushi va Maxsus Item Drop Tizimi!",
+                content: `Yangi yangilanishda biz bir qator ajoyib o'zgarishlarni kiritdik:
+                <ul>
+                    <li>Gildiya urushlari (Guild Sabuk Wall War) tizimi to'liq optimallashtirildi va mukofotlar ko'paytirildi.</li>
+                    <li>Sabuk qal'asini bosib olgan gildiyaga maxsus oltin sovrinlar beriladi.</li>
+                    <li>Bosslardan tushadigan noyob asbob-uskunalar (items) drop foizlari biroz ko'tarildi!</li>
+                    <li>O'yindagi mayda xatoliklar (bugs) bartaraf etildi va server pongi yanada yaxshilandi.</li>
+                </ul>
+                Barcha jangchilarga jang maydonida omad tilaymiz!`,
+                image: "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800",
+                date: "2026-05-29",
+                author: "AdminUzSecret",
+                category: "patch",
+                timestamp: Date.now()
+            }
+        ];
+
+        const topics = [
+            {
+                title: "Mir2uzSecret Serverining Asosiy O'yin Qoidalari!",
+                category: "news",
+                content: `Assalomu alaykum Legend of Mir 2 UZ SECRET hamjamiyati!
+                O'yinimiz barcha foydalanuvchilar uchun qulay va yoqimli bo'lishi maqsadida quyidagi qoidalarga amal qilishingizni so'raymiz:
+                
+                1. O'yinda boshqa o'yinchilarni haqorat qilish, kamsitish taqiqlanadi (Ban xavfi!).
+                2. Noqonuniy dasturlardan (cheats/hacks) foydalanish va account o'chirilishiga olib keladi.
+                3. Har qanday xatolik (bug) topsangiz, uni o'z manfaatingiz uchun ishlatmasdan, darhol Adminlarga xabar bering.
+                4. O'yin ichidagi savdolarni faqat xavfsiz zonada amalga oshiring.
+                
+                Qoidalarni buzgan o'yinchilarga nisbatan moderatorlar tarafidan jazo choralari qo'llaniladi. E'tiboringiz uchun rahmat!`,
+                author: "AdminUzSecret",
+                date: "2026-05-27 14:32",
+                timestamp: Date.now() - 172800000,
+                likes: 12,
+                likedBy: [],
+                comments: [
+                    {
+                        author: "DragonKnight",
+                        content: "Qoidalar juda to'g'ri shakllantirilgan. Serverda tartib birinchi o'rinda!",
+                        date: "2026-05-27 15:10"
+                    },
+                    {
+                        author: "WarriorUz",
+                        content: "Tushunarli, barcha qoidalarga amal qilamiz. Loyihaga omad!",
+                        date: "2026-05-27 16:45"
+                    }
+                ]
+            }
+        ];
+
+        const chat = [
+            {
+                username: "WarriorUz",
+                role: "Legendary Player",
+                avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Milo",
+                message: "Salom hammaga! Serverda kimdir savdo qilyaptimi?",
+                time: "20:30",
+                timestamp: Date.now() - 100000
+            },
+            {
+                username: "TaoistSecrets",
+                role: "Active Explorer",
+                avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka",
+                message: "Salom! Men yangi qilich sotmoqchiman, level 25 dagi.",
+                time: "20:32",
+                timestamp: Date.now() - 50000
+            }
+        ];
+
+        // Seed to Firestore
+        for (const user of users) {
+            await setDoc(doc(db, "users", "seed_" + user.username), user);
+        }
+        for (const item of news) {
+            await addDoc(collection(db, "news"), item);
+        }
+        for (const topic of topics) {
+            await addDoc(collection(db, "forum_topics"), topic);
+        }
+        for (const msg of chat) {
+            await addDoc(collection(db, "chat_messages"), msg);
+        }
+        console.log("🔥 Firestore database seeding complete!");
     }
 
     static getData(key) {
@@ -489,22 +717,72 @@ class Database {
     }
 }
 
-// Global DB Init
-Database.init();
-
 // ==========================================================================
 // 4. MAIN APPLICATION ORCHESTRATOR
 // ==========================================================================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     
-    // RESTORE ACTIVE SESSION
-    const savedUser = safeStorage.getItem('mir2_active_user');
-    if (savedUser) {
-        try {
-            activeUser = JSON.parse(savedUser);
-        } catch (e) {
-            console.error("Session restore crash caught securely.", e);
-            safeStorage.removeItem('mir2_active_user');
+    // Dynamic Route/Page Checking
+    const activePage = document.body.getAttribute("data-page");
+
+    // Initialize Database (Seeds collections if needed)
+    await Database.init();
+
+    // Render Gold-Crimson banner if in Local Storage Mode
+    if (!firebaseMode) {
+        showLocalModeBanner();
+    }
+
+    // RESTORE ACTIVE SESSION (Local Mode only; Firebase uses Auth state hooks)
+    if (firebaseMode) {
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Fetch profile
+                const userDocRef = doc(db, "users", user.uid);
+                const userSnap = await getDoc(userDocRef);
+                if (userSnap.exists()) {
+                    activeUser = userSnap.data();
+                    activeUser.uid = user.uid; // store referenced UID
+                } else {
+                    // Check if it was a seeded username login conversion
+                    activeUser = null;
+                }
+            } else {
+                activeUser = null;
+            }
+            updateUserUI();
+            renderRatings();
+            
+            // Execute route triggers
+            if (activePage === 'admin') {
+                if (!activeUser || (activeUser.role !== 'SuperAdmin' && activeUser.role !== 'Admin')) {
+                    alert(getLocaleWord('alert_unauthorized'));
+                    window.location.href = "index.html";
+                } else {
+                    renderAdminUsers();
+                }
+            }
+        });
+    } else {
+        const savedUser = safeStorage.getItem('mir2_active_user');
+        if (savedUser) {
+            try {
+                activeUser = JSON.parse(savedUser);
+            } catch (e) {
+                safeStorage.removeItem('mir2_active_user');
+            }
+        }
+        updateUserUI();
+        renderRatings();
+        
+        // Admin security check
+        if (activePage === 'admin') {
+            if (!activeUser || (activeUser.role !== 'SuperAdmin' && activeUser.role !== 'Admin')) {
+                alert(getLocaleWord('alert_unauthorized'));
+                window.location.href = "index.html";
+                return;
+            }
+            renderAdminUsers();
         }
     }
 
@@ -520,30 +798,12 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(".lang-btn").forEach(b => b.classList.remove("active"));
         activeLangBtn.classList.add("active");
     }
-
-    // Sync Page Texts
+    
     translatePage(currentLang);
 
-    // Dynamic Route/Page Checking
-    const activePage = document.body.getAttribute("data-page");
-
-    // Admin security check
-    if (activePage === 'admin') {
-        if (!activeUser || (activeUser.role !== 'SuperAdmin' && activeUser.role !== 'Admin')) {
-            alert(getLocaleWord('alert_unauthorized'));
-            window.location.href = "index.html";
-            return;
-        }
-    }
-
-    // Update session elements
-    updateUserUI();
-
-    // RENDER COMMON COMPONENTS (SIDEBARS)
-    renderRatings();
+    // INITIAL RENDER PAGE SPECIFIC PANELS & SIDEBARS
     renderSidebarShoutbox();
 
-    // INITIAL RENDER PAGE SPECIFIC PANELS
     if (activePage === 'home') {
         renderNews();
     } else if (activePage === 'forum') {
@@ -551,8 +811,6 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (activePage === 'chat') {
         renderShoutbox();
         scrollChatToBottom();
-    } else if (activePage === 'admin') {
-        renderAdminUsers();
     }
 
     // ==========================================================================
@@ -622,37 +880,90 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Login logic
+    // Login logic (Firebase Auth / Local Fallback)
     const loginForm = document.getElementById("login-form");
     if (loginForm) {
-        loginForm.addEventListener("submit", (e) => {
+        loginForm.addEventListener("submit", async (e) => {
             e.preventDefault();
             const usernameInput = document.getElementById("login-username").value.trim();
             const passwordInput = document.getElementById("login-password").value;
 
-            const users = Database.getData('mir2_users');
-            const user = users.find(u => (u.username.toLowerCase() === usernameInput.toLowerCase() || u.email.toLowerCase() === usernameInput.toLowerCase()) && u.password === passwordInput);
+            if (firebaseMode) {
+                try {
+                    const usersRef = collection(db, "users");
+                    let email = usernameInput;
+                    let foundUser = null;
+                    let targetDocId = null;
 
-            if (user) {
-                activeUser = user;
-                safeStorage.setItem('mir2_active_user', JSON.stringify(activeUser));
-                alert(getLocaleWord('alert_login_success'));
-                updateUserUI();
-                if (authModal) authModal.classList.add("hidden");
-                loginForm.reset();
-                
-                // If logged in on admin page, reload
-                if (activePage === 'admin') window.location.reload();
+                    // Query Firestore by username or email
+                    if (!usernameInput.includes("@")) {
+                        const q = query(usersRef, where("username", "==", usernameInput));
+                        const qs = await getDocs(q);
+                        if (!qs.empty) {
+                            foundUser = qs.docs[0].data();
+                            targetDocId = qs.docs[0].id;
+                            email = foundUser.email;
+                        }
+                    } else {
+                        const q = query(usersRef, where("email", "==", usernameInput));
+                        const qs = await getDocs(q);
+                        if (!qs.empty) {
+                            foundUser = qs.docs[0].data();
+                            targetDocId = qs.docs[0].id;
+                        }
+                    }
+
+                    if (!foundUser) {
+                        alert(getLocaleWord('alert_login_failed'));
+                        return;
+                    }
+
+                    let userCredential;
+                    try {
+                        userCredential = await signInWithEmailAndPassword(auth, email, passwordInput);
+                    } catch (authError) {
+                        // Handle pre-seeded user login on the fly!
+                        if ((authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential') && foundUser.password === passwordInput) {
+                            // Register on Auth programmatically
+                            userCredential = await createUserWithEmailAndPassword(auth, email, passwordInput);
+                            // Link profile to the real UID doc
+                            await setDoc(doc(db, "users", userCredential.user.uid), foundUser);
+                        } else {
+                            throw authError;
+                        }
+                    }
+
+                    alert(getLocaleWord('alert_login_success'));
+                    if (authModal) authModal.classList.add("hidden");
+                    loginForm.reset();
+                    if (activePage === 'admin') window.location.reload();
+                } catch (error) {
+                    console.error("Login failed.", error);
+                    alert(getLocaleWord('alert_login_failed'));
+                }
             } else {
-                alert(getLocaleWord('alert_login_failed'));
+                const users = Database.getData('mir2_users');
+                const user = users.find(u => (u.username.toLowerCase() === usernameInput.toLowerCase() || u.email.toLowerCase() === usernameInput.toLowerCase()) && u.password === passwordInput);
+
+                if (user) {
+                    activeUser = user;
+                    safeStorage.setItem('mir2_active_user', JSON.stringify(activeUser));
+                    alert(getLocaleWord('alert_login_success'));
+                    updateUserUI();
+                    if (authModal) authModal.classList.add("hidden");
+                    loginForm.reset();
+                    if (activePage === 'admin') window.location.reload();
+                } else {
+                    alert(getLocaleWord('alert_login_failed'));
+                }
             }
         });
     }
 
-    // Register logic
+    // Register logic (Firebase / Local Fallback)
     const registerForm = document.getElementById("register-form");
     if (registerForm) {
-        registerForm.addEventListener("submit", (e) => {
+        registerForm.addEventListener("submit", async (e) => {
             e.preventDefault();
             const usernameInput = document.getElementById("register-username").value.trim();
             const emailInput = document.getElementById("register-email").value.trim();
@@ -664,44 +975,81 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            const users = Database.getData('mir2_users');
-            const isTaken = users.some(u => u.username.toLowerCase() === usernameInput.toLowerCase());
+            if (firebaseMode) {
+                try {
+                    const usersRef = collection(db, "users");
+                    const q = query(usersRef, where("username", "==", usernameInput));
+                    const qs = await getDocs(q);
+                    if (!qs.empty) {
+                        alert(getLocaleWord('alert_username_taken'));
+                        return;
+                    }
 
-            if (isTaken) {
-                alert(getLocaleWord('alert_username_taken'));
-                return;
+                    const userCredential = await createUserWithEmailAndPassword(auth, emailInput, passwordInput);
+                    const uid = userCredential.user.uid;
+
+                    const newUser = {
+                        username: usernameInput,
+                        email: emailInput,
+                        password: passwordInput, // stored for backward compatibility
+                        role: "Newbie",
+                        avatar: avatarInput,
+                        posts: 0,
+                        likes: 0,
+                        points: 0,
+                        regDate: new Date().toISOString().split('T')[0]
+                    };
+
+                    await setDoc(doc(db, "users", uid), newUser);
+                    alert(getLocaleWord('alert_register_success'));
+                    if (tabLogin) tabLogin.click();
+                    registerForm.reset();
+                } catch (error) {
+                    console.error("Firebase Registration failed.", error);
+                    alert(error.message || getLocaleWord('alert_fill_fields'));
+                }
+            } else {
+                const users = Database.getData('mir2_users');
+                const isTaken = users.some(u => u.username.toLowerCase() === usernameInput.toLowerCase());
+
+                if (isTaken) {
+                    alert(getLocaleWord('alert_username_taken'));
+                    return;
+                }
+
+                const newUser = {
+                    username: usernameInput,
+                    email: emailInput,
+                    password: passwordInput,
+                    role: "Newbie",
+                    avatar: avatarInput,
+                    posts: 0,
+                    likes: 0,
+                    points: 0,
+                    regDate: new Date().toISOString().split('T')[0]
+                };
+
+                users.push(newUser);
+                Database.setData('mir2_users', users);
+
+                alert(getLocaleWord('alert_register_success'));
+                if (tabLogin) tabLogin.click();
+                registerForm.reset();
             }
-
-            const newUser = {
-                username: usernameInput,
-                email: emailInput,
-                password: passwordInput,
-                role: "Newbie",
-                avatar: avatarInput,
-                posts: 0,
-                likes: 0,
-                points: 0,
-                regDate: new Date().toISOString().split('T')[0]
-            };
-
-            users.push(newUser);
-            Database.setData('mir2_users', users);
-
-            alert(getLocaleWord('alert_register_success'));
-            if (tabLogin) tabLogin.click();
-            registerForm.reset();
         });
     }
 
     // Logout
     const logoutBtn = document.getElementById("logout-btn");
     if (logoutBtn) {
-        logoutBtn.addEventListener("click", () => {
-            activeUser = null;
-            safeStorage.removeItem('mir2_active_user');
-            updateUserUI();
-            
-            // Redirect if currently on admin panel
+        logoutBtn.addEventListener("click", async () => {
+            if (firebaseMode) {
+                await signOut(auth);
+            } else {
+                activeUser = null;
+                safeStorage.removeItem('mir2_active_user');
+                updateUserUI();
+            }
             if (activePage === 'admin') {
                 window.location.href = "index.html";
             }
@@ -725,14 +1073,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (profileModal) {
         profileModal.addEventListener("click", (e) => {
             if (e.target === profileModal) profileModal.classList.add("hidden");
-        });
-    }
-
-    // Sidebar Go To Chat redirection
-    const sidebarGoToChatBtn = document.getElementById("sidebar-go-to-chat-btn");
-    if (sidebarGoToChatBtn) {
-        sidebarGoToChatBtn.addEventListener("click", (e) => {
-            // Natively routes to chat.html, no preventDefault
         });
     }
 
@@ -767,9 +1107,9 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
-        // Save Topic Form
+        // Save Topic Form (Firebase / Local Fallback)
         if (createTopicForm) {
-            createTopicForm.addEventListener("submit", (e) => {
+            createTopicForm.addEventListener("submit", async (e) => {
                 e.preventDefault();
                 if (!activeUser) return;
 
@@ -777,30 +1117,45 @@ document.addEventListener("DOMContentLoaded", () => {
                 const category = document.getElementById("topic-category").value;
                 const content = document.getElementById("topic-content").value.trim();
 
-                const topics = Database.getData('mir2_topics');
-                const newTopic = {
-                    id: Date.now(),
-                    title: title,
-                    category: category,
-                    content: content,
-                    author: activeUser.username,
-                    date: new Date().toISOString().replace('T', ' ').substring(0, 16),
-                    likes: 0,
-                    likedBy: [],
-                    comments: []
-                };
-
-                topics.push(newTopic);
-                Database.setData('mir2_topics', topics);
-
-                recalculateUserPoints(activeUser.username);
+                if (firebaseMode) {
+                    await addDoc(collection(db, "forum_topics"), {
+                        title: title,
+                        category: category,
+                        content: content,
+                        author: activeUser.username,
+                        date: new Date().toISOString().replace('T', ' ').substring(0, 16),
+                        timestamp: Date.now(),
+                        likes: 0,
+                        likedBy: [],
+                        comments: []
+                    });
+                    await recalculateUserPoints(activeUser.username);
+                } else {
+                    const topics = Database.getData('mir2_topics');
+                    const newTopic = {
+                        id: Date.now(),
+                        title: title,
+                        category: category,
+                        content: content,
+                        author: activeUser.username,
+                        date: new Date().toISOString().replace('T', ' ').substring(0, 16),
+                        likes: 0,
+                        likedBy: [],
+                        comments: []
+                    };
+                    topics.push(newTopic);
+                    Database.setData('mir2_topics', topics);
+                    recalculateUserPoints(activeUser.username);
+                }
 
                 createTopicForm.reset();
                 document.getElementById("forum-create-view").classList.add("hidden");
                 document.getElementById("forum-list-view").classList.remove("hidden");
-
-                renderForumTopics();
-                renderRatings();
+                
+                if (!firebaseMode) {
+                    renderForumTopics();
+                    renderRatings();
+                }
             });
         }
 
@@ -809,7 +1164,7 @@ document.addEventListener("DOMContentLoaded", () => {
             backToTopicsBtn.addEventListener("click", () => {
                 document.getElementById("forum-detail-view").classList.add("hidden");
                 document.getElementById("forum-list-view").classList.remove("hidden");
-                renderForumTopics();
+                if (!firebaseMode) renderForumTopics();
             });
         }
 
@@ -826,31 +1181,54 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Forum comment submission
         if (commentReplyForm) {
-            commentReplyForm.addEventListener("submit", (e) => {
+            commentReplyForm.addEventListener("submit", async (e) => {
                 e.preventDefault();
                 if (!activeUser || !activeTopicId) return;
 
                 const text = document.getElementById("comment-text").value.trim();
 
-                const topicList = Database.getData('mir2_topics');
-                const t = topicList.find(x => x.id === activeTopicId);
+                if (firebaseMode) {
+                    const docRef = doc(db, "forum_topics", activeTopicId);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        const topic = docSnap.data();
+                        const newComments = [...topic.comments];
+                        
+                        const newComment = {
+                            id: Date.now(),
+                            author: activeUser.username,
+                            content: text,
+                            date: new Date().toISOString().replace('T', ' ').substring(0, 16)
+                        };
+                        
+                        newComments.push(newComment);
+                        await updateDoc(docRef, {
+                            comments: newComments
+                        });
 
-                const newComment = {
-                    id: Date.now(),
-                    author: activeUser.username,
-                    content: text,
-                    date: new Date().toISOString().replace('T', ' ').substring(0, 16)
-                };
+                        await recalculateUserPoints(activeUser.username);
+                        commentReplyForm.reset();
+                        openTopicDetail(activeTopicId);
+                    }
+                } else {
+                    const topicList = Database.getData('mir2_topics');
+                    const t = topicList.find(x => x.id === activeTopicId);
 
-                t.comments.push(newComment);
-                Database.setData('mir2_topics', topicList);
+                    const newComment = {
+                        id: Date.now(),
+                        author: activeUser.username,
+                        content: text,
+                        date: new Date().toISOString().replace('T', ' ').substring(0, 16)
+                    };
 
-                // Add Points for comment (+5)
-                recalculateUserPoints(activeUser.username);
+                    t.comments.push(newComment);
+                    Database.setData('mir2_topics', topicList);
 
-                commentReplyForm.reset();
-                openTopicDetail(activeTopicId);
-                renderRatings();
+                    recalculateUserPoints(activeUser.username);
+                    commentReplyForm.reset();
+                    openTopicDetail(activeTopicId);
+                    renderRatings();
+                }
             });
         }
     }
@@ -861,7 +1239,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (activePage === 'chat') {
         const chatSendForm = document.getElementById("chat-send-form");
         if (chatSendForm) {
-            chatSendForm.addEventListener("submit", (e) => {
+            chatSendForm.addEventListener("submit", async (e) => {
                 e.preventDefault();
                 if (!activeUser) return;
 
@@ -869,26 +1247,36 @@ document.addEventListener("DOMContentLoaded", () => {
                 const msgText = input.value.trim();
                 if (!msgText) return;
 
-                const chat = Database.getData('mir2_chat');
                 const timeNow = new Date().toTimeString().split(' ')[0].substring(0, 5);
 
-                const newMsg = {
-                    username: activeUser.username,
-                    role: activeUser.role,
-                    avatar: activeUser.avatar,
-                    message: msgText,
-                    time: timeNow
-                };
-
-                chat.push(newMsg);
-                if (chat.length > 50) chat.shift();
-
-                Database.setData('mir2_chat', chat);
+                if (firebaseMode) {
+                    await addDoc(collection(db, "chat_messages"), {
+                        username: activeUser.username,
+                        role: activeUser.role,
+                        avatar: activeUser.avatar,
+                        message: msgText,
+                        time: timeNow,
+                        timestamp: Date.now()
+                    });
+                } else {
+                    const chat = Database.getData('mir2_chat');
+                    const newMsg = {
+                        username: activeUser.username,
+                        role: activeUser.role,
+                        avatar: activeUser.avatar,
+                        message: msgText,
+                        time: timeNow,
+                        timestamp: Date.now()
+                    };
+                    chat.push(newMsg);
+                    if (chat.length > 50) chat.shift();
+                    Database.setData('mir2_chat', chat);
+                    
+                    renderShoutbox();
+                    renderSidebarShoutbox();
+                    scrollChatToBottom();
+                }
                 input.value = "";
-
-                renderShoutbox();
-                renderSidebarShoutbox();
-                scrollChatToBottom();
             });
         }
     }
@@ -899,7 +1287,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (activePage === 'admin') {
         const adminNewsForm = document.getElementById("admin-news-form");
         if (adminNewsForm) {
-            adminNewsForm.addEventListener("submit", (e) => {
+            adminNewsForm.addEventListener("submit", async (e) => {
                 e.preventDefault();
                 if (!activeUser || (activeUser.role !== 'SuperAdmin' && activeUser.role !== 'Admin')) return;
 
@@ -907,114 +1295,180 @@ document.addEventListener("DOMContentLoaded", () => {
                 const imageUrl = document.getElementById("news-image").value;
                 const content = document.getElementById("news-content").value.trim();
 
-                const news = Database.getData('mir2_news');
-                const newPost = {
-                    id: Date.now(),
-                    title: title,
-                    content: content,
-                    image: imageUrl,
-                    date: new Date().toISOString().split('T')[0],
-                    author: activeUser.username,
-                    category: "news"
-                };
-
-                news.push(newPost);
-                Database.setData('mir2_news', news);
+                if (firebaseMode) {
+                    await addDoc(collection(db, "news"), {
+                        title: title,
+                        content: content,
+                        image: imageUrl,
+                        date: new Date().toISOString().split('T')[0],
+                        author: activeUser.username,
+                        category: "news",
+                        timestamp: Date.now()
+                    });
+                } else {
+                    const news = Database.getData('mir2_news');
+                    const newPost = {
+                        id: Date.now(),
+                        title: title,
+                        content: content,
+                        image: imageUrl,
+                        date: new Date().toISOString().split('T')[0],
+                        author: activeUser.username,
+                        category: "news"
+                    };
+                    news.push(newPost);
+                    Database.setData('mir2_news', news);
+                }
 
                 adminNewsForm.reset();
                 alert("Yangilik muvaffaqiyatli e'lon qilindi!");
-                window.location.href = "index.html"; // Native redirect to homepage news feed
+                window.location.href = "index.html";
             });
         }
     }
+});
 
-    // ==========================================================================
-    // 9. DYNAMIC RENDER PROCEDURES & FUNCTIONS
-    // ==========================================================================
-    
-    function updateUserUI() {
-        const guestView = document.getElementById("guest-view");
-        const userView = document.getElementById("user-view");
-        const navAdmin = document.getElementById("nav-item-admin");
+// ==========================================================================
+// 9. DYNAMIC RENDER PROCEDURES & FUNCTIONS
+// ==========================================================================
+function updateUserUI() {
+    const guestView = document.getElementById("guest-view");
+    const userView = document.getElementById("user-view");
+    const navAdmin = document.getElementById("nav-item-admin");
 
-        if (activeUser) {
-            const users = Database.getData('mir2_users');
-            const freshUser = users.find(u => u.username === activeUser.username) || activeUser;
-            activeUser = freshUser;
+    if (activeUser) {
+        if (guestView) guestView.classList.add("hidden");
+        if (userView) userView.classList.remove("hidden");
 
-            if (guestView) guestView.classList.add("hidden");
-            if (userView) userView.classList.remove("hidden");
+        const displayNameEl = document.getElementById("user-display-name");
+        const avatarEl = document.getElementById("user-avatar");
+        const roleEl = document.getElementById("user-display-role");
 
-            const displayNameEl = document.getElementById("user-display-name");
-            const avatarEl = document.getElementById("user-avatar");
-            const roleEl = document.getElementById("user-display-role");
-
-            if (displayNameEl) displayNameEl.textContent = activeUser.username;
-            if (avatarEl) avatarEl.src = activeUser.avatar;
-            if (roleEl) {
-                roleEl.textContent = activeUser.role;
-                roleEl.className = "role-badge " + activeUser.role.toLowerCase().replace(" ", "-");
-            }
-
-            const statPostsEl = document.getElementById("stat-posts");
-            const statLikesEl = document.getElementById("stat-likes");
-            const statPointsEl = document.getElementById("stat-points");
-
-            if (statPostsEl) statPostsEl.textContent = activeUser.posts || 0;
-            if (statLikesEl) statLikesEl.textContent = activeUser.likes || 0;
-            if (statPointsEl) statPointsEl.textContent = activeUser.points || 0;
-
-            // Admin panel visibility in navigation
-            if (navAdmin) {
-                if (activeUser.role === 'SuperAdmin' || activeUser.role === 'Admin') {
-                    navAdmin.classList.remove("hidden");
-                } else {
-                    navAdmin.classList.add("hidden");
-                }
-            }
-
-            // Create news button on homepage
-            const addNewsBtn = document.getElementById("admin-create-news-btn");
-            if (addNewsBtn) {
-                if (activeUser.role === 'SuperAdmin' || activeUser.role === 'Admin') {
-                    addNewsBtn.classList.remove("hidden");
-                } else {
-                    addNewsBtn.classList.add("hidden");
-                }
-            }
-
-            // Comment Form / Chat Forms
-            const commentForm = document.getElementById("comment-reply-form");
-            const commentPrompt = document.getElementById("comment-form-guest-prompt");
-            if (commentForm) commentForm.classList.remove("hidden");
-            if (commentPrompt) commentPrompt.classList.add("hidden");
-
-            const chatForm = document.getElementById("chat-send-form");
-            const chatPrompt = document.getElementById("chat-guest-prompt");
-            if (chatForm) chatForm.classList.remove("hidden");
-            if (chatPrompt) chatPrompt.classList.add("hidden");
-
-        } else {
-            if (guestView) guestView.classList.remove("hidden");
-            if (userView) userView.classList.add("hidden");
-            if (navAdmin) navAdmin.classList.add("hidden");
-            
-            const addNewsBtn = document.getElementById("admin-create-news-btn");
-            if (addNewsBtn) addNewsBtn.classList.add("hidden");
-
-            const commentForm = document.getElementById("comment-reply-form");
-            const commentPrompt = document.getElementById("comment-form-guest-prompt");
-            if (commentForm) commentForm.classList.add("hidden");
-            if (commentPrompt) commentPrompt.classList.remove("hidden");
-
-            const chatForm = document.getElementById("chat-send-form");
-            const chatPrompt = document.getElementById("chat-guest-prompt");
-            if (chatForm) chatForm.classList.add("hidden");
-            if (chatPrompt) chatPrompt.classList.remove("hidden");
+        if (displayNameEl) displayNameEl.textContent = activeUser.username;
+        if (avatarEl) avatarEl.src = activeUser.avatar;
+        if (roleEl) {
+            roleEl.textContent = activeUser.role;
+            roleEl.className = "role-badge " + activeUser.role.toLowerCase().replace(" ", "-");
         }
-    }
 
-    function recalculateUserPoints(username) {
+        const statPostsEl = document.getElementById("stat-posts");
+        const statLikesEl = document.getElementById("stat-likes");
+        const statPointsEl = document.getElementById("stat-points");
+
+        if (statPostsEl) statPostsEl.textContent = activeUser.posts || 0;
+        if (statLikesEl) statLikesEl.textContent = activeUser.likes || 0;
+        if (statPointsEl) statPointsEl.textContent = activeUser.points || 0;
+
+        // Admin panel visibility
+        if (navAdmin) {
+            if (activeUser.role === 'SuperAdmin' || activeUser.role === 'Admin') {
+                navAdmin.classList.remove("hidden");
+            } else {
+                navAdmin.classList.add("hidden");
+            }
+        }
+
+        // News creation button
+        const addNewsBtn = document.getElementById("admin-create-news-btn");
+        if (addNewsBtn) {
+            if (activeUser.role === 'SuperAdmin' || activeUser.role === 'Admin') {
+                addNewsBtn.classList.remove("hidden");
+            } else {
+                addNewsBtn.classList.add("hidden");
+            }
+        }
+
+        // Comments & Shoutbox forms
+        const commentForm = document.getElementById("comment-reply-form");
+        const commentPrompt = document.getElementById("comment-form-guest-prompt");
+        if (commentForm) commentForm.classList.remove("hidden");
+        if (commentPrompt) commentPrompt.classList.add("hidden");
+
+        const chatForm = document.getElementById("chat-send-form");
+        const chatPrompt = document.getElementById("chat-guest-prompt");
+        if (chatForm) chatForm.classList.remove("hidden");
+        if (chatPrompt) chatPrompt.classList.add("hidden");
+
+    } else {
+        if (guestView) guestView.classList.remove("hidden");
+        if (userView) userView.classList.add("hidden");
+        if (navAdmin) navAdmin.classList.add("hidden");
+        
+        const addNewsBtn = document.getElementById("admin-create-news-btn");
+        if (addNewsBtn) addNewsBtn.classList.add("hidden");
+
+        const commentForm = document.getElementById("comment-reply-form");
+        const commentPrompt = document.getElementById("comment-form-guest-prompt");
+        if (commentForm) commentForm.classList.add("hidden");
+        if (commentPrompt) commentPrompt.classList.remove("hidden");
+
+        const chatForm = document.getElementById("chat-send-form");
+        const chatPrompt = document.getElementById("chat-guest-prompt");
+        if (chatForm) chatForm.classList.add("hidden");
+        if (chatPrompt) chatPrompt.classList.remove("hidden");
+    }
+}
+
+async function recalculateUserPoints(username) {
+    if (firebaseMode) {
+        try {
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("username", "==", username));
+            const qs = await getDocs(q);
+            if (!qs.empty) {
+                const userDocSnap = qs.docs[0];
+                const user = userDocSnap.data();
+                const userDocRef = doc(db, "users", userDocSnap.id);
+
+                const topicsQ = query(collection(db, "forum_topics"));
+                const topicsSnap = await getDocs(topicsQ);
+
+                let topicsCreated = 0;
+                let commentsWritten = 0;
+                let likesReceived = user.likes || 0;
+
+                topicsSnap.forEach(docSnap => {
+                    const topic = docSnap.data();
+                    if (topic.author === username) topicsCreated++;
+                    if (topic.comments) {
+                        topic.comments.forEach(c => {
+                            if (c.author === username) commentsWritten++;
+                        });
+                    }
+                });
+
+                const posts = topicsCreated + commentsWritten;
+                const points = (likesReceived * 5) + (posts * 5) + (topicsCreated * 10);
+
+                let newRole = user.role;
+                const staffRoles = ['SuperAdmin', 'Admin', 'Moderator'];
+                if (!staffRoles.includes(user.role)) {
+                    if (points >= 300) {
+                        newRole = "Legendary Player";
+                    } else if (points >= 60) {
+                        newRole = "Active Explorer";
+                    } else {
+                        newRole = "Newbie";
+                    }
+                }
+
+                await updateDoc(userDocRef, {
+                    posts: posts,
+                    points: points,
+                    role: newRole
+                });
+
+                if (activeUser && activeUser.username === username) {
+                    activeUser.posts = posts;
+                    activeUser.points = points;
+                    activeUser.role = newRole;
+                    updateUserUI();
+                }
+            }
+        } catch (e) {
+            console.error("Firebase recalculate points error.", e);
+        }
+    } else {
         const users = Database.getData('mir2_users');
         const user = users.find(u => u.username === username);
         if (!user) return;
@@ -1033,7 +1487,6 @@ document.addEventListener("DOMContentLoaded", () => {
         user.posts = topicsCreated + commentsWritten;
         user.points = (likesReceived * 5) + (user.posts * 5) + (topicsCreated * 10);
 
-        // Auto rank promotion if not staff
         const staffRoles = ['SuperAdmin', 'Admin', 'Moderator'];
         if (!staffRoles.includes(user.role)) {
             if (user.points >= 300) {
@@ -1053,203 +1506,305 @@ document.addEventListener("DOMContentLoaded", () => {
             updateUserUI();
         }
     }
+}
 
-    // ==========================================================================
-    // 10. HOMEPAGE & NEWS LOADER
-    // ==========================================================================
-    function renderNews() {
-        const container = document.getElementById("news-container");
-        if (!container) return;
+// ==========================================================================
+// 10. HOMEPAGE & NEWS LOADER
+// ==========================================================================
+function renderNews() {
+    const container = document.getElementById("news-container");
+    if (!container) return;
 
+    if (firebaseMode) {
+        const newsQuery = query(collection(db, "news"), orderBy("timestamp", "desc"));
+        onSnapshot(newsQuery, (snapshot) => {
+            container.innerHTML = "";
+            const newsList = [];
+            snapshot.forEach(docSnap => {
+                const data = docSnap.data();
+                data.id = docSnap.id;
+                newsList.push(data);
+            });
+            displayNewsItems(newsList, container);
+        });
+    } else {
         const newsList = Database.getData('mir2_news');
         container.innerHTML = "";
-
-        if (newsList.length === 0) {
-            container.innerHTML = `<div class="news-card" style="padding:20px; text-align:center;">Hozircha yangiliklar yo'q.</div>`;
-            return;
-        }
-
         const sortedNews = [...newsList].reverse();
+        displayNewsItems(sortedNews, container);
+    }
+}
 
-        sortedNews.forEach(item => {
-            const card = document.createElement("article");
-            card.className = "news-card";
+function displayNewsItems(newsList, container) {
+    if (newsList.length === 0) {
+        container.innerHTML = `<div class="news-card" style="padding:20px; text-align:center;">Hozircha yangiliklar yo'q.</div>`;
+        return;
+    }
 
-            const imageUrl = item.image.startsWith("http") || item.image.endsWith(".png") ? item.image : "banner.png";
+    newsList.forEach(item => {
+        const card = document.createElement("article");
+        card.className = "news-card";
 
-            card.innerHTML = `
-                <div class="news-image" style="background-image: url('${imageUrl}')">
-                    <div class="news-image-overlay"></div>
-                    <span class="news-meta-category">${item.category.toUpperCase()}</span>
-                </div>
-                <div class="news-body">
-                    <div class="news-date"><i class="fa-regular fa-clock"></i> ${item.date}</div>
-                    <h3>${item.title}</h3>
-                    <div class="news-text">${item.content}</div>
-                    <div class="news-footer">
-                        <div class="news-author">
-                            <i class="fa-solid fa-crown text-gold"></i>
-                            <span class="news-author-name"><strong>${item.author}</strong></span>
-                        </div>
-                        ${activeUser && (activeUser.role === 'SuperAdmin' || activeUser.role === 'Admin') ? 
-                            `<button class="btn btn-sm btn-danger btn-crimson delete-news-btn" data-id="${item.id}">
-                                <i class="fa-solid fa-trash"></i> O'chirish
-                             </button>` : ''
-                        }
+        const imageUrl = item.image.startsWith("http") || item.image.endsWith(".png") ? item.image : "banner.png";
+
+        card.innerHTML = `
+            <div class="news-image" style="background-image: url('${imageUrl}')">
+                <div class="news-image-overlay"></div>
+                <span class="news-meta-category">${item.category.toUpperCase()}</span>
+            </div>
+            <div class="news-body">
+                <div class="news-date"><i class="fa-regular fa-clock"></i> ${item.date}</div>
+                <h3>${item.title}</h3>
+                <div class="news-text">${item.content}</div>
+                <div class="news-footer">
+                    <div class="news-author">
+                        <i class="fa-solid fa-crown text-gold"></i>
+                        <span class="news-author-name"><strong>${item.author}</strong></span>
                     </div>
+                    ${activeUser && (activeUser.role === 'SuperAdmin' || activeUser.role === 'Admin') ? 
+                        `<button class="btn btn-sm btn-danger btn-crimson delete-news-btn" data-id="${item.id}">
+                            <i class="fa-solid fa-trash"></i> O'chirish
+                         </button>` : ''
+                    }
                 </div>
-            `;
-            container.appendChild(card);
-        });
+            </div>
+        `;
+        container.appendChild(card);
+    });
 
-        // News delete trigger
-        const delBtns = container.querySelectorAll(".delete-news-btn");
-        delBtns.forEach(btn => {
-            btn.addEventListener("click", () => {
-                const id = parseInt(btn.getAttribute("data-id"));
-                if (confirm("Ushbu yangilikni butunlay o'chirib tashlamoqchimisiz?")) {
+    const delBtns = container.querySelectorAll(".delete-news-btn");
+    delBtns.forEach(btn => {
+        btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-id");
+            if (confirm("Ushbu yangilikni o'chirib tashlamoqchimisiz?")) {
+                if (firebaseMode) {
+                    await deleteDoc(doc(db, "news", id));
+                } else {
+                    const intId = parseInt(id);
                     let list = Database.getData('mir2_news');
-                    list = list.filter(n => n.id !== id);
+                    list = list.filter(n => n.id !== intId);
                     Database.setData('mir2_news', list);
                     renderNews();
                 }
-            });
+            }
         });
+    });
+}
+
+// ==========================================================================
+// 11. FORUM RENDERS & ACTIONS
+// ==========================================================================
+let currentCategoryFilter = 'all';
+let activeTopicId = null;
+
+function renderForumTopics() {
+    const container = document.getElementById("topics-list-container");
+    if (!container) return;
+
+    if (firebaseMode) {
+        const q = query(collection(db, "forum_topics"), orderBy("timestamp", "desc"));
+        onSnapshot(q, (snapshot) => {
+            const topics = [];
+            snapshot.forEach(docSnap => {
+                const data = docSnap.data();
+                data.id = docSnap.id;
+                topics.push(data);
+            });
+            displayForumTopics(topics, container);
+        });
+    } else {
+        const topics = Database.getData('mir2_topics');
+        const sorted = [...topics].reverse();
+        displayForumTopics(sorted, container);
+    }
+}
+
+async function displayForumTopics(topics, container) {
+    container.innerHTML = "";
+
+    let filteredTopics = topics;
+    if (currentCategoryFilter !== 'all') {
+        filteredTopics = topics.filter(t => t.category === currentCategoryFilter);
     }
 
-    // ==========================================================================
-    // 11. FORUM RENDERS & ACTIONS
-    // ==========================================================================
-    let currentCategoryFilter = 'all';
-    let activeTopicId = null;
-
-    function renderForumTopics() {
-        const container = document.getElementById("topics-list-container");
-        if (!container) return;
-
-        const topics = Database.getData('mir2_topics');
-        container.innerHTML = "";
-
-        const users = Database.getData('mir2_users');
-
-        let filteredTopics = topics;
-        if (currentCategoryFilter !== 'all') {
-            filteredTopics = topics.filter(t => t.category === currentCategoryFilter);
-        }
-
-        if (filteredTopics.length === 0) {
-            container.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-muted);">
-                <i class="fa-solid fa-box-open" style="font-size: 2rem; margin-bottom: 10px; display:block;"></i>
-                Hech qanday muhokama mavzusi topilmadi.
-            </div>`;
-            return;
-        }
-
-        const sorted = [...filteredTopics].reverse();
-
-        sorted.forEach(topic => {
-            const authorData = users.find(u => u.username === topic.author) || { avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=guest" };
-            
-            const row = document.createElement("div");
-            row.className = "topic-row";
-            row.innerHTML = `
-                <img src="${authorData.avatar}" class="topic-avatar" alt="Avatar">
-                <div class="topic-info">
-                    <h4>${topic.title}</h4>
-                    <div class="topic-meta">
-                        <span class="topic-category-tag">${topic.category}</span>
-                        <span class="topic-author-name">${topic.author}</span>
-                        <span><i class="fa-regular fa-clock"></i> ${topic.date}</span>
-                    </div>
-                </div>
-                <div class="topic-stats">
-                    <div class="topic-stat-item">
-                        <span class="topic-stat-num">${topic.comments.length}</span>
-                        <span class="topic-stat-label">${getLocaleWord('posts')}</span>
-                    </div>
-                    <div class="topic-stat-item">
-                        <span class="topic-stat-num text-gold">${topic.likes}</span>
-                        <span class="topic-stat-label">${getLocaleWord('likes')}</span>
-                    </div>
-                </div>
-            `;
-
-            row.addEventListener("click", () => {
-                openTopicDetail(topic.id);
-            });
-
-            container.appendChild(row);
-        });
+    if (filteredTopics.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-muted);">
+            <i class="fa-solid fa-box-open" style="font-size: 2rem; margin-bottom: 10px; display:block;"></i>
+            Hech qanday muhokama mavzusi topilmadi.
+        </div>`;
+        return;
     }
 
-    window.openTopicDetail = function(id) {
-        activeTopicId = id;
-        const topics = Database.getData('mir2_topics');
-        const topic = topics.find(t => t.id === id);
-        if (!topic) return;
+    // Resolve user avatars for forum threads dynamically
+    let localUsers = [];
+    if (!firebaseMode) {
+        localUsers = Database.getData('mir2_users');
+    }
 
-        document.getElementById("forum-list-view").classList.add("hidden");
-        document.getElementById("forum-create-view").classList.add("hidden");
-        document.getElementById("forum-detail-view").classList.remove("hidden");
-
-        const users = Database.getData('mir2_users');
-        const authorData = users.find(u => u.username === topic.author) || { role: "Newbie", avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=guest" };
-
-        // Detail Header Admin Actions
-        const adminActionsBox = document.getElementById("detail-admin-actions");
-        adminActionsBox.innerHTML = "";
-        if (activeUser && (activeUser.role === 'SuperAdmin' || activeUser.role === 'Admin' || activeUser.role === 'Moderator')) {
-            adminActionsBox.innerHTML = `
-                <button class="btn btn-sm btn-danger btn-crimson" id="admin-delete-topic-btn">
-                    <i class="fa-solid fa-trash-can"></i> Mavzuni o'chirish
-                </button>
-            `;
-            document.getElementById("admin-delete-topic-btn").addEventListener("click", () => {
-                if (confirm("Haqiqatan ham ushbu muhokama mavzusini o'chirmoqchimisiz?")) {
-                    let list = Database.getData('mir2_topics');
-                    list = list.filter(t => t.id !== id);
-                    Database.setData('mir2_topics', list);
-                    
-                    document.getElementById("back-to-topics-btn").click();
-                }
-            });
+    for (const topic of filteredTopics) {
+        let avatar = "https://api.dicebear.com/7.x/adventurer/svg?seed=guest";
+        if (firebaseMode) {
+            try {
+                // Find author profile in Firestore
+                const q = query(collection(db, "users"), where("username", "==", topic.author));
+                const qs = await getDocs(q);
+                if (!qs.empty) avatar = qs.docs[0].data().avatar;
+            } catch (e) {}
+        } else {
+            const authorData = localUsers.find(u => u.username === topic.author);
+            if (authorData) avatar = authorData.avatar;
         }
 
-        const detailCard = document.getElementById("detail-topic-card");
-        const hasLiked = activeUser ? topic.likedBy.includes(activeUser.username) : false;
-
-        detailCard.innerHTML = `
-            <div class="post-header">
-                <div class="post-author-info">
-                    <img src="${authorData.avatar}" class="topic-avatar pointer" onclick="showUserProfileModal('${topic.author}')" alt="Avatar">
-                    <div class="post-author-details">
-                        <div class="post-author-name-wrapper">
-                            <h4 class="pointer" onclick="showUserProfileModal('${topic.author}')">${topic.author}</h4>
-                            <span class="role-badge ${authorData.role.toLowerCase().replace(" ", "-")}">${authorData.role}</span>
-                        </div>
-                        <span class="post-date"><i class="fa-regular fa-clock"></i> ${topic.date}</span>
-                    </div>
+        const row = document.createElement("div");
+        row.className = "topic-row";
+        row.innerHTML = `
+            <img src="${avatar}" class="topic-avatar" alt="Avatar">
+            <div class="topic-info">
+                <h4>${topic.title}</h4>
+                <div class="topic-meta">
+                    <span class="topic-category-tag">${topic.category}</span>
+                    <span class="topic-author-name">${topic.author}</span>
+                    <span><i class="fa-regular fa-clock"></i> ${topic.date}</span>
                 </div>
-                <span class="topic-category-tag">${topic.category}</span>
             </div>
-            <h2 class="post-title text-gold" style="font-family: var(--font-body); font-size:1.4rem; margin-bottom:15px;">${topic.title}</h2>
-            <div class="post-body">${escapeHTML(topic.content)}</div>
-            <div class="post-footer">
-                <button class="post-like-btn ${hasLiked ? 'liked' : ''}" id="like-topic-btn">
-                    <i class="fa-solid fa-heart"></i> 
-                    <span id="topic-likes-label">${topic.likes}</span>
-                </button>
+            <div class="topic-stats">
+                <div class="topic-stat-item">
+                    <span class="topic-stat-num">${topic.comments ? topic.comments.length : 0}</span>
+                    <span class="topic-stat-label">${getLocaleWord('posts')}</span>
+                </div>
+                <div class="topic-stat-item">
+                    <span class="topic-stat-num text-gold">${topic.likes}</span>
+                    <span class="topic-stat-label">${getLocaleWord('likes')}</span>
+                </div>
             </div>
         `;
 
-        // Like bindings
-        document.getElementById("like-topic-btn").addEventListener("click", () => {
-            if (!activeUser) {
-                alert(getLocaleWord('alert_require_login'));
-                if (authModal) authModal.classList.remove("hidden");
-                return;
-            }
+        row.addEventListener("click", () => {
+            openTopicDetail(topic.id);
+        });
 
+        container.appendChild(row);
+    }
+}
+
+window.openTopicDetail = async function(id) {
+    activeTopicId = id;
+    let topic = null;
+    let authorData = { role: "Newbie", avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=guest" };
+
+    if (firebaseMode) {
+        const docRef = doc(db, "forum_topics", id);
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) return;
+        topic = docSnap.data();
+        topic.id = id;
+
+        try {
+            const q = query(collection(db, "users"), where("username", "==", topic.author));
+            const qs = await getDocs(q);
+            if (!qs.empty) authorData = qs.docs[0].data();
+        } catch (e) {}
+    } else {
+        const topics = Database.getData('mir2_topics');
+        topic = topics.find(t => t.id === id);
+        if (!topic) return;
+
+        const users = Database.getData('mir2_users');
+        authorData = users.find(u => u.username === topic.author) || authorData;
+    }
+
+    document.getElementById("forum-list-view").classList.add("hidden");
+    document.getElementById("forum-create-view").classList.add("hidden");
+    document.getElementById("forum-detail-view").classList.remove("hidden");
+
+    // Detail Admin Actions
+    const adminActionsBox = document.getElementById("detail-admin-actions");
+    adminActionsBox.innerHTML = "";
+
+    if (activeUser && (activeUser.role === 'SuperAdmin' || activeUser.role === 'Admin' || activeUser.role === 'Moderator')) {
+        adminActionsBox.innerHTML = `
+            <button class="btn btn-sm btn-danger btn-crimson" id="admin-delete-topic-btn">
+                <i class="fa-solid fa-trash-can"></i> Mavzuni o'chirish
+            </button>
+        `;
+        document.getElementById("admin-delete-topic-btn").addEventListener("click", async () => {
+            if (confirm("Haqiqatan ham ushbu muhokama mavzusini o'chirmoqchimisiz?")) {
+                if (firebaseMode) {
+                    await deleteDoc(doc(db, "forum_topics", id));
+                } else {
+                    let list = Database.getData('mir2_topics');
+                    list = list.filter(t => t.id !== id);
+                    Database.setData('mir2_topics', list);
+                }
+                document.getElementById("back-to-topics-btn").click();
+            }
+        });
+    }
+
+    const detailCard = document.getElementById("detail-topic-card");
+    const hasLiked = activeUser ? topic.likedBy.includes(activeUser.username) : false;
+
+    detailCard.innerHTML = `
+        <div class="post-header">
+            <div class="post-author-info">
+                <img src="${authorData.avatar}" class="topic-avatar pointer" onclick="showUserProfileModal('${topic.author}')" alt="Avatar">
+                <div class="post-author-details">
+                    <div class="post-author-name-wrapper">
+                        <h4 class="pointer" onclick="showUserProfileModal('${topic.author}')">${topic.author}</h4>
+                        <span class="role-badge ${authorData.role.toLowerCase().replace(" ", "-")}">${authorData.role}</span>
+                    </div>
+                    <span class="post-date"><i class="fa-regular fa-clock"></i> ${topic.date}</span>
+                </div>
+            </div>
+            <span class="topic-category-tag">${topic.category}</span>
+        </div>
+        <h2 class="post-title text-gold" style="font-family: var(--font-body); font-size:1.4rem; margin-bottom:15px;">${topic.title}</h2>
+        <div class="post-body">${escapeHTML(topic.content)}</div>
+        <div class="post-footer">
+            <button class="post-like-btn ${hasLiked ? 'liked' : ''}" id="like-topic-btn">
+                <i class="fa-solid fa-heart"></i> 
+                <span id="topic-likes-label">${topic.likes}</span>
+            </button>
+        </div>
+    `;
+
+    // Like bindings
+    document.getElementById("like-topic-btn").addEventListener("click", async () => {
+        if (!activeUser) {
+            alert(getLocaleWord('alert_require_login'));
+            const authModal = document.getElementById("auth-modal");
+            if (authModal) authModal.classList.remove("hidden");
+            return;
+        }
+
+        if (firebaseMode) {
+            const docRef = doc(db, "forum_topics", id);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                const t = docSnap.data();
+                const userIndex = t.likedBy.indexOf(activeUser.username);
+                let newLikedBy = [...t.likedBy];
+                let newLikes = t.likes;
+
+                if (userIndex === -1) {
+                    newLikedBy.push(activeUser.username);
+                    newLikes += 1;
+                    await incrementUserLikes(t.author, 1);
+                } else {
+                    newLikedBy.splice(userIndex, 1);
+                    newLikes -= 1;
+                    await incrementUserLikes(t.author, -1);
+                }
+
+                await updateDoc(docRef, {
+                    likedBy: newLikedBy,
+                    likes: newLikes
+                });
+
+                await recalculateUserPoints(t.author);
+                openTopicDetail(id);
+            }
+        } else {
             let topicList = Database.getData('mir2_topics');
             let t = topicList.find(x => x.id === id);
             const userIndex = t.likedBy.indexOf(activeUser.username);
@@ -1273,62 +1828,107 @@ document.addEventListener("DOMContentLoaded", () => {
             recalculateUserPoints(t.author);
             openTopicDetail(id);
             renderRatings();
-        });
+        }
+    });
 
-        renderComments(topic.comments, topic.id);
-    };
+    renderComments(topic.comments || [], topic.id);
+};
 
-    function renderComments(comments, topicId) {
-        const container = document.getElementById("comments-list-container");
-        const countEl = document.getElementById("comments-count");
-        if (!container || !countEl) return;
+async function incrementUserLikes(username, val) {
+    try {
+        const q = query(collection(db, "users"), where("username", "==", username));
+        const qs = await getDocs(q);
+        if (!qs.empty) {
+            const userDocRef = doc(db, "users", qs.docs[0].id);
+            const currentLikes = qs.docs[0].data().likes || 0;
+            await updateDoc(userDocRef, {
+                likes: Math.max(0, currentLikes + val)
+            });
+        }
+    } catch (e) {
+        console.error("Firestore increment likes failed.", e);
+    }
+}
 
-        countEl.textContent = comments.length;
-        container.innerHTML = "";
+async function renderComments(comments, topicId) {
+    const container = document.getElementById("comments-list-container");
+    const countEl = document.getElementById("comments-count");
+    if (!container || !countEl) return;
 
-        if (comments.length === 0) {
-            container.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted); font-size: 0.88rem;">
-                Ushbu mavzuda fikrlar yo'q. Birinchilardan bo'lib javob yozing!
-            </div>`;
-            return;
+    countEl.textContent = comments.length;
+    container.innerHTML = "";
+
+    if (comments.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted); font-size: 0.88rem;">
+            Ushbu mavzuda fikrlar yo'q. Birinchilardan bo'lib javob yozing!
+        </div>`;
+        return;
+    }
+
+    let localUsers = [];
+    if (!firebaseMode) {
+        localUsers = Database.getData('mir2_users');
+    }
+
+    for (const [index, comment] of comments.entries()) {
+        let commentAuthorData = { role: "Newbie", avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=guest" };
+        if (firebaseMode) {
+            try {
+                const q = query(collection(db, "users"), where("username", "==", comment.author));
+                const qs = await getDocs(q);
+                if (!qs.empty) commentAuthorData = qs.docs[0].data();
+            } catch (e) {}
+        } else {
+            commentAuthorData = localUsers.find(u => u.username === comment.author) || commentAuthorData;
         }
 
-        const users = Database.getData('mir2_users');
-
-        comments.forEach((comment, index) => {
-            const authorData = users.find(u => u.username === comment.author) || { role: "Newbie", avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=guest" };
-
-            const cCard = document.createElement("div");
-            cCard.className = "comment-card";
-            cCard.innerHTML = `
-                <div class="comment-header">
-                    <div class="post-author-info">
-                        <img src="${authorData.avatar}" class="topic-avatar pointer" onclick="showUserProfileModal('${comment.author}')" style="width:34px; height:34px;" alt="Avatar">
-                        <div class="post-author-details">
-                            <div class="post-author-name-wrapper">
-                                <h5 class="pointer" style="color:#ffffff; font-weight:600;" onclick="showUserProfileModal('${comment.author}')">${comment.author}</h5>
-                                <span class="role-badge ${authorData.role.toLowerCase().replace(" ", "-")}" style="font-size:0.6rem; padding: 1px 6px; margin: 0;">${authorData.role}</span>
-                            </div>
-                            <span class="post-date" style="font-size:0.7rem;"><i class="fa-regular fa-clock"></i> ${comment.date}</span>
+        const cCard = document.createElement("div");
+        cCard.className = "comment-card";
+        cCard.innerHTML = `
+            <div class="comment-header">
+                <div class="post-author-info">
+                    <img src="${commentAuthorData.avatar}" class="topic-avatar pointer" onclick="showUserProfileModal('${comment.author}')" style="width:34px; height:34px;" alt="Avatar">
+                    <div class="post-author-details">
+                        <div class="post-author-name-wrapper">
+                            <h5 class="pointer" style="color:#ffffff; font-weight:600;" onclick="showUserProfileModal('${comment.author}')">${comment.author}</h5>
+                            <span class="role-badge ${commentAuthorData.role.toLowerCase().replace(" ", "-")}" style="font-size:0.6rem; padding: 1px 6px; margin: 0;">${commentAuthorData.role}</span>
                         </div>
+                        <span class="post-date" style="font-size:0.7rem;"><i class="fa-regular fa-clock"></i> ${comment.date}</span>
                     </div>
-                    ${activeUser && (activeUser.role === 'SuperAdmin' || activeUser.role === 'Admin' || activeUser.role === 'Moderator') ?
-                        `<button class="btn btn-sm btn-danger btn-crimson delete-comment-btn" style="padding: 3px 8px; font-size:0.65rem;" data-index="${index}">
-                            <i class="fa-solid fa-trash-can"></i>
-                         </button>` : ''
-                    }
                 </div>
-                <div class="comment-body">${escapeHTML(comment.content)}</div>
-            `;
-            container.appendChild(cCard);
-        });
+                ${activeUser && (activeUser.role === 'SuperAdmin' || activeUser.role === 'Admin' || activeUser.role === 'Moderator') ?
+                    `<button class="btn btn-sm btn-danger btn-crimson delete-comment-btn" style="padding: 3px 8px; font-size:0.65rem;" data-index="${index}">
+                        <i class="fa-solid fa-trash-can"></i>
+                     </button>` : ''
+                }
+            </div>
+            <div class="comment-body">${escapeHTML(comment.content)}</div>
+        `;
+        container.appendChild(cCard);
+    }
 
-        // Comment delete triggers
-        const delCommentBtns = container.querySelectorAll(".delete-comment-btn");
-        delCommentBtns.forEach(btn => {
-            btn.addEventListener("click", () => {
-                const commentIndex = parseInt(btn.getAttribute("data-index"));
-                if (confirm("Ushbu fikrni o'chirib yubormoqchimisiz?")) {
+    const delCommentBtns = container.querySelectorAll(".delete-comment-btn");
+    delCommentBtns.forEach(btn => {
+        btn.addEventListener("click", async () => {
+            const commentIndex = parseInt(btn.getAttribute("data-index"));
+            if (confirm("Ushbu fikrni o'chirib yubormoqchimisiz?")) {
+                if (firebaseMode) {
+                    const docRef = doc(db, "forum_topics", topicId);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        const t = docSnap.data();
+                        const newComments = [...t.comments];
+                        const deletedAuthor = newComments[commentIndex].author;
+                        
+                        newComments.splice(commentIndex, 1);
+                        await updateDoc(docRef, {
+                            comments: newComments
+                        });
+
+                        await recalculateUserPoints(deletedAuthor);
+                        openTopicDetail(topicId);
+                    }
+                } else {
                     const topicList = Database.getData('mir2_topics');
                     const t = topicList.find(x => x.id === topicId);
                     
@@ -1340,26 +1940,49 @@ document.addEventListener("DOMContentLoaded", () => {
                     recalculateUserPoints(deletedAuthor);
                     openTopicDetail(topicId);
                 }
-            });
+            }
         });
-    }
+    });
+}
 
-    // ==========================================================================
-    // 12. SHOUTBOX LIVE CHAT LOADS
-    // ==========================================================================
-    function renderShoutbox() {
-        const fullChatLog = document.getElementById("chat-messages-log");
-        if (!fullChatLog) return;
+// ==========================================================================
+// 12. SHOUTBOX LIVE CHAT LOADS (REALTIME / LOCAL FALLBACK)
+// ==========================================================================
+function renderShoutbox() {
+    const fullChatLog = document.getElementById("chat-messages-log");
+    if (!fullChatLog) return;
 
+    if (firebaseMode) {
+        const chatQuery = query(collection(db, "chat_messages"), orderBy("timestamp", "asc"));
+        onSnapshot(chatQuery, (snapshot) => {
+            fullChatLog.innerHTML = "";
+            snapshot.forEach(docSnap => {
+                const msg = docSnap.data();
+                const row = document.createElement("div");
+                row.className = "chat-msg-row";
+                const badgeClass = msg.role.toLowerCase().replace(" ", "-");
+                row.innerHTML = `
+                    <img src="${msg.avatar}" class="chat-msg-avatar pointer" onclick="showUserProfileModal('${msg.username}')" alt="Avatar">
+                    <div class="chat-msg-content">
+                        <div class="chat-msg-header">
+                            <span class="chat-msg-user pointer" onclick="showUserProfileModal('${msg.username}')">${msg.username}</span>
+                            <span class="role-badge ${badgeClass}" style="font-size:0.6rem; padding: 1px 6px; margin:0;">${msg.role}</span>
+                            <span class="chat-msg-time">${msg.time}</span>
+                        </div>
+                        <div class="chat-msg-text">${escapeHTML(msg.message)}</div>
+                    </div>
+                `;
+                fullChatLog.appendChild(row);
+            });
+            scrollChatToBottom();
+        });
+    } else {
         const chatLogs = Database.getData('mir2_chat');
         fullChatLog.innerHTML = "";
-
         chatLogs.forEach(msg => {
             const row = document.createElement("div");
             row.className = "chat-msg-row";
-            
             const badgeClass = msg.role.toLowerCase().replace(" ", "-");
-            
             row.innerHTML = `
                 <img src="${msg.avatar}" class="chat-msg-avatar pointer" onclick="showUserProfileModal('${msg.username}')" alt="Avatar">
                 <div class="chat-msg-content">
@@ -1374,17 +1997,36 @@ document.addEventListener("DOMContentLoaded", () => {
             fullChatLog.appendChild(row);
         });
     }
+}
 
-    function renderSidebarShoutbox() {
-        const sidebarChatList = document.getElementById("mini-chat-list");
-        if (!sidebarChatList) return;
+function renderSidebarShoutbox() {
+    const sidebarChatList = document.getElementById("mini-chat-list");
+    if (!sidebarChatList) return;
 
+    if (firebaseMode) {
+        const chatQuery = query(collection(db, "chat_messages"), orderBy("timestamp", "asc"));
+        onSnapshot(chatQuery, (snapshot) => {
+            sidebarChatList.innerHTML = "";
+            const chatLogs = [];
+            snapshot.forEach(docSnap => {
+                chatLogs.push(docSnap.data());
+            });
+            const recent = chatLogs.slice(-8);
+            recent.forEach(msg => {
+                const mRow = document.createElement("div");
+                mRow.className = "mini-chat-msg";
+                mRow.innerHTML = `
+                    <span class="mini-chat-user pointer" onclick="showUserProfileModal('${msg.username}')">${msg.username}:</span> 
+                    <span class="mini-chat-text">${escapeHTML(msg.message)}</span>
+                `;
+                sidebarChatList.appendChild(mRow);
+            });
+            sidebarChatList.scrollTop = sidebarChatList.scrollHeight;
+        });
+    } else {
         const chatLogs = Database.getData('mir2_chat');
         sidebarChatList.innerHTML = "";
-
-        // Slice last 8 messages for sidebar widget
         const recent = chatLogs.slice(-8);
-
         recent.forEach(msg => {
             const mRow = document.createElement("div");
             mRow.className = "mini-chat-msg";
@@ -1394,32 +2036,56 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
             sidebarChatList.appendChild(mRow);
         });
-
         sidebarChatList.scrollTop = sidebarChatList.scrollHeight;
     }
+}
 
-    function scrollChatToBottom() {
-        const fullChatLog = document.getElementById("chat-messages-log");
-        if (fullChatLog) fullChatLog.scrollTop = fullChatLog.scrollHeight;
-    }
+function scrollChatToBottom() {
+    const fullChatLog = document.getElementById("chat-messages-log");
+    if (fullChatLog) fullChatLog.scrollTop = fullChatLog.scrollHeight;
+}
 
-    // ==========================================================================
-    // 13. SIDEBAR TOP FORUM USERS RATINGS
-    // ==========================================================================
-    function renderRatings() {
-        const ratingList = document.getElementById("top-users-rating-list");
-        if (!ratingList) return;
+// ==========================================================================
+// 13. SIDEBAR TOP FORUM USERS RATINGS
+// ==========================================================================
+function renderRatings() {
+    const ratingList = document.getElementById("top-users-rating-list");
+    if (!ratingList) return;
 
+    if (firebaseMode) {
+        const q = query(collection(db, "users"), orderBy("points", "desc"), limit(5));
+        onSnapshot(q, (snapshot) => {
+            ratingList.innerHTML = "";
+            let index = 0;
+            snapshot.forEach(docSnap => {
+                const user = docSnap.data();
+                const item = document.createElement("li");
+                item.className = "rating-item";
+                const rankNum = index + 1;
+                const badgeClass = user.role.toLowerCase().replace(" ", "-");
+
+                item.innerHTML = `
+                    <span class="rating-num rank-${rankNum}">${rankNum}</span>
+                    <img src="${user.avatar}" class="rating-item-avatar pointer" onclick="showUserProfileModal('${user.username}')" alt="Avatar">
+                    <div class="rating-item-info">
+                        <span class="rating-name" onclick="showUserProfileModal('${user.username}')">${user.username}</span>
+                        <span class="rating-badge role-badge ${badgeClass}" style="font-size:0.55rem; padding: 0px 5px; margin: 0; display: inline-block;">${user.role}</span>
+                    </div>
+                    <div class="rating-points">${user.points}</div>
+                `;
+                ratingList.appendChild(item);
+                index++;
+            });
+        });
+    } else {
         const users = Database.getData('mir2_users');
         const sorted = [...users].sort((a, b) => b.points - a.points);
         const top5 = sorted.slice(0, 5);
 
         ratingList.innerHTML = "";
-
         top5.forEach((user, index) => {
             const item = document.createElement("li");
             item.className = "rating-item";
-
             const rankNum = index + 1;
             const badgeClass = user.role.toLowerCase().replace(" ", "-");
 
@@ -1435,14 +2101,84 @@ document.addEventListener("DOMContentLoaded", () => {
             ratingList.appendChild(item);
         });
     }
+}
 
-    // ==========================================================================
-    // 14. ADMINISTRATIVE DASHBOARD
-    // ==========================================================================
-    function renderAdminUsers() {
-        const tableBody = document.getElementById("admin-users-table-body");
-        if (!tableBody) return;
+// ==========================================================================
+// 14. ADMINISTRATIVE DASHBOARD
+// ==========================================================================
+function renderAdminUsers() {
+    const tableBody = document.getElementById("admin-users-table-body");
+    if (!tableBody) return;
 
+    if (firebaseMode) {
+        const q = query(collection(db, "users"));
+        onSnapshot(q, (snapshot) => {
+            tableBody.innerHTML = "";
+            snapshot.forEach(docSnap => {
+                const user = docSnap.data();
+                user.id = docSnap.id; // bind firestore document ID
+                const tr = document.createElement("tr");
+                const isSuperAdmin = user.role === 'SuperAdmin';
+                const disableSelector = isSuperAdmin || (activeUser.role === 'Admin' && user.role === 'Admin') || (activeUser.username === user.username);
+
+                const dropdown = `
+                    <select class="admin-role-select" data-docid="${user.id}" data-username="${user.username}" ${disableSelector ? 'disabled' : ''}>
+                        <option value="Newbie" ${user.role === 'Newbie' ? 'selected' : ''}>Newbie</option>
+                        <option value="Active Explorer" ${user.role === 'Active Explorer' ? 'selected' : ''}>Active Explorer</option>
+                        <option value="Legendary Player" ${user.role === 'Legendary Player' ? 'selected' : ''}>Legendary Player</option>
+                        <option value="Moderator" ${user.role === 'Moderator' ? 'selected' : ''}>Moderator</option>
+                        <option value="Admin" ${user.role === 'Admin' ? 'selected' : ''}>Admin</option>
+                        ${activeUser.role === 'SuperAdmin' ? `<option value="SuperAdmin" ${user.role === 'SuperAdmin' ? 'selected' : ''}>SuperAdmin</option>` : ''}
+                    </select>
+                `;
+
+                tr.innerHTML = `
+                    <td>
+                        <div class="admin-user-info-row">
+                            <img src="${user.avatar}" class="admin-user-avatar" alt="Avatar">
+                            <span><strong>${user.username}</strong></span>
+                        </div>
+                    </td>
+                    <td>${dropdown}</td>
+                    <td><strong class="text-gold">${user.points}</strong></td>
+                    <td>
+                        ${disableSelector ? `<span class="text-muted">Disabled</span>` : 
+                            `<button class="btn btn-sm btn-danger btn-crimson admin-delete-user-btn" style="padding: 2px 6px; font-size:0.7rem;" data-docid="${user.id}" data-username="${user.username}">
+                                <i class="fa-solid fa-user-minus"></i> Block
+                             </button>`
+                        }
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            // Bind selectors
+            const selects = tableBody.querySelectorAll(".admin-role-select");
+            selects.forEach(select => {
+                select.addEventListener("change", async () => {
+                    const docId = select.getAttribute("data-docid");
+                    const targetUsername = select.getAttribute("data-username");
+                    const newRole = select.value;
+                    
+                    const userDocRef = doc(db, "users", docId);
+                    await updateDoc(userDocRef, { role: newRole });
+                    alert(`${targetUsername} zvania/roli muvaffaqiyatli ${newRole} darajasiga o'zgartirildi!`);
+                });
+            });
+
+            const blockBtns = tableBody.querySelectorAll(".admin-delete-user-btn");
+            blockBtns.forEach(btn => {
+                btn.addEventListener("click", async () => {
+                    const docId = btn.getAttribute("data-docid");
+                    const targetUsername = btn.getAttribute("data-username");
+                    if (confirm(`Haqiqatdan ham ${targetUsername} foydalanuvchisini bloklab, o'chirmoqchimisiz?`)) {
+                        await deleteDoc(doc(db, "users", docId));
+                        alert(`${targetUsername} muvaffaqiyatli bloklandi!`);
+                    }
+                });
+            });
+        });
+    } else {
         const users = Database.getData('mir2_users');
         tableBody.innerHTML = "";
 
@@ -1482,7 +2218,7 @@ document.addEventListener("DOMContentLoaded", () => {
             tableBody.appendChild(tr);
         });
 
-        // Role edit dropdown listeners
+        // Dropdown listeners
         const selects = tableBody.querySelectorAll(".admin-role-select");
         selects.forEach(select => {
             select.addEventListener("change", () => {
@@ -1501,14 +2237,13 @@ document.addEventListener("DOMContentLoaded", () => {
                         safeStorage.setItem('mir2_active_user', JSON.stringify(activeUser));
                         updateUserUI();
                     }
-                    
                     renderAdminUsers();
                     renderRatings();
                 }
             });
         });
 
-        // Block account listeners
+        // Block accounts
         const blockBtns = tableBody.querySelectorAll(".admin-delete-user-btn");
         blockBtns.forEach(btn => {
             btn.addEventListener("click", () => {
@@ -1523,52 +2258,60 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
     }
+}
 
-    // ==========================================================================
-    // 15. DETAILED PROFILES MODAL
-    // ==========================================================================
-    window.showUserProfileModal = function(username) {
+// ==========================================================================
+// 15. DETAILED PROFILES MODAL
+// ==========================================================================
+window.showUserProfileModal = async function(username) {
+    let user = null;
+    if (firebaseMode) {
+        try {
+            const q = query(collection(db, "users"), where("username", "==", username));
+            const qs = await getDocs(q);
+            if (!qs.empty) user = qs.docs[0].data();
+        } catch (e) {}
+    } else {
         const users = Database.getData('mir2_users');
-        const user = users.find(u => u.username === username);
-        if (!user) return;
+        user = users.find(u => u.username === username);
+    }
 
-        const profileModalEl = document.getElementById("profile-modal");
-        const contentBox = document.getElementById("profile-modal-content");
-        if (!profileModalEl || !contentBox) return;
+    if (!user) return;
 
-        const badgeClass = user.role.toLowerCase().replace(" ", "-");
+    const profileModalEl = document.getElementById("profile-modal");
+    const contentBox = document.getElementById("profile-modal-content");
+    if (!profileModalEl || !contentBox) return;
 
-        contentBox.innerHTML = `
-            <div class="profile-modal-top">
-                <img src="${user.avatar}" class="profile-modal-avatar" alt="Avatar">
-                <h3>${user.username}</h3>
-                <span class="role-badge ${badgeClass}">${user.role}</span>
+    const badgeClass = user.role.toLowerCase().replace(" ", "-");
+
+    contentBox.innerHTML = `
+        <div class="profile-modal-top">
+            <img src="${user.avatar}" class="profile-modal-avatar" alt="Avatar">
+            <h3>${user.username}</h3>
+            <span class="role-badge ${badgeClass}">${user.role}</span>
+        </div>
+        
+        <div class="profile-modal-fields">
+            <div class="profile-field-box">
+                <span class="profile-field-label">Ro'yxatdan o'tgan</span>
+                <span class="profile-field-value">${user.regDate}</span>
             </div>
-            
-            <div class="profile-modal-fields">
-                <div class="profile-field-box">
-                    <span class="profile-field-label">Ro'yxatdan o'tgan</span>
-                    <span class="profile-field-value">${user.regDate}</span>
-                </div>
-                <div class="profile-field-box">
-                    <span class="profile-field-label">Foydalanuvchi ballari</span>
-                    <span class="profile-field-value text-gold">${user.points} ball</span>
-                </div>
-                <div class="profile-field-box">
-                    <span class="profile-field-label">Forum postlari</span>
-                    <span class="profile-field-value">${user.posts || 0} ta</span>
-                </div>
-                <div class="profile-field-box">
-                    <span class="profile-field-label">Olingan baholar (likes)</span>
-                    <span class="profile-field-value text-success">${user.likes || 0} ta</span>
-                </div>
+            <div class="profile-field-box">
+                <span class="profile-field-label">Foydalanuvchi ballari</span>
+                <span class="profile-field-value text-gold">${user.points} ball</span>
             </div>
-        `;
-
-        profileModalEl.classList.remove("hidden");
-    };
-
-});
+            <div class="profile-field-box">
+                <span class="profile-field-label">Forum postlari</span>
+                <span class="profile-field-value">${user.posts || 0} ta</span>
+            </div>
+            <div class="profile-field-box">
+                <span class="profile-field-label">Olingan baholar (likes)</span>
+                <span class="profile-field-value text-success">${user.likes || 0} ta</span>
+            </div>
+        </div>
+    `;
+    profileModalEl.classList.remove("hidden");
+};
 
 // ==========================================================================
 // 16. STATIC HELPER UTILITIES
@@ -1581,11 +2324,9 @@ function translatePage(lang) {
             if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
                 el.placeholder = dictionary[lang][key];
             } else {
-                // If it's a structural tag like H2 or H3 containing child tags, translate only text
                 const icon = el.querySelector("i");
                 if (icon) {
                     const text = dictionary[lang][key];
-                    // Keep icon HTML, replace only trailing text
                     el.innerHTML = "";
                     el.appendChild(icon);
                     el.appendChild(document.createTextNode(" " + text));
@@ -1608,4 +2349,11 @@ function escapeHTML(str) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+function showLocalModeBanner() {
+    const banner = document.createElement("div");
+    banner.style.cssText = "background: linear-gradient(90deg, #b8860b, #8b0000); color: #ffffff; text-align: center; padding: 8px 15px; font-family: var(--font-body); font-size: 0.82rem; font-weight: 500; letter-spacing: 0.5px; border-bottom: 2px solid var(--border-gold); text-shadow: 1px 1px 2px #000000; display: flex; align-items: center; justify-content: center; gap: 8px; z-index: 9999; position: relative;";
+    banner.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-gold animate-pulse"></i> <span>Saytingiz hozircha <strong>Lokal Rejimda</strong> ishlayapti. Uni global tarmoqqa ulash uchun <code>app.js</code> faylining eng tepasiga o'zingizning bepul Firebase kalitlaringizni joylashtiring!</span>`;
+    document.body.prepend(banner);
 }
