@@ -8,12 +8,13 @@
 // ==========================================================================
 // [IMPORTANT] Paste your free Firebase Web App config keys below!
 const firebaseConfig = {
-    apiKey: "AIzaSyDLy0MoIvsY5QxdOre5jI9kJRmjslSd7Mg",
+    apiKey: "AIzaSyDLy0MoIvsY5QxdOre5jI9kJRMjslSd7Mg",
     authDomain: "legendofmir2uzsecret.firebaseapp.com",
     projectId: "legendofmir2uzsecret",
     storageBucket: "legendofmir2uzsecret.firebasestorage.app",
-    messagingSenderId: "14819316937",
-    appId: "1:14819316937:web:a90cbdbe5dac5cd1497f58"
+    messagingSenderId: "148193196937",
+    appId: "1:148193196937:web:a90cbdbe5dac5cd1497f58",
+    measurementId: "G-9HQTY0HHRY"
 };
 
 const isFirebaseConfigured = firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("YOUR_");
@@ -1020,7 +1021,13 @@ document.addEventListener("DOMContentLoaded", async () => {
                     if (activePage === 'admin') window.location.reload();
                 } catch (error) {
                     console.error("Login failed.", error);
-                    alert(getLocaleWord('alert_login_failed'));
+                    let errMsg = getLocaleWord('alert_login_failed');
+                    if (error.code === 'auth/api-key-not-valid' || (error.message && error.message.includes('api-key-not-valid'))) {
+                        errMsg = "Firebase API Kaliti (apiKey) noto'g'ri yoki yaroqsiz! Iltimos, Firebase Console -> Project Settings bo'limidan to'g'ri 'Web API Key'ni olib, app.js faylidagi firebaseConfig-ga joylashtiring.";
+                    } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                        errMsg = "Elektron pochta yoki parol noto'g'ri!";
+                    }
+                    alert(errMsg);
                 }
             } else {
                 const users = Database.getData('mir2_users');
@@ -1087,7 +1094,17 @@ document.addEventListener("DOMContentLoaded", async () => {
                     registerForm.reset();
                 } catch (error) {
                     console.error("Firebase Registration failed.", error);
-                    alert(error.message || getLocaleWord('alert_fill_fields'));
+                    let errMsg = error.message || getLocaleWord('alert_fill_fields');
+                    if (error.code === 'auth/api-key-not-valid' || (error.message && error.message.includes('api-key-not-valid'))) {
+                        errMsg = "Firebase API Kaliti (apiKey) noto'g'ri yoki yaroqsiz! Iltimos, Firebase Console -> Project Settings bo'limidan to'g'ri 'Web API Key'ni olib, app.js faylidagi firebaseConfig-ga joylashtiring.";
+                    } else if (error.code === 'auth/email-already-in-use') {
+                        errMsg = "Ushbu elektron pochta manzili allaqachon ro'yxatdan o'tkazilgan!";
+                    } else if (error.code === 'auth/weak-password') {
+                        errMsg = "Parol juda kuchsiz! Parol kamida 6 ta belgidan iborat bo'lishi kerak.";
+                    } else if (error.code === 'auth/invalid-email') {
+                        errMsg = "Elektron pochta manzili noto'g'ri formatda kiritildi!";
+                    }
+                    alert(errMsg);
                 }
             } else {
                 const users = Database.getData('mir2_users');
