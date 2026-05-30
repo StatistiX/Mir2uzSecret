@@ -38,6 +38,7 @@ const dictionary = {
         online: "FAOL",
         offline: "OFLAYN",
         online_players: "Ro'yxatdan o'tganlar:",
+        online_site_players: "Online o'yinchilar:",
         ping: "Ping:",
         guest_title: "Mehmon",
         guest_desc: "Ro'yxatdan o'tmagan",
@@ -118,6 +119,7 @@ const dictionary = {
         online: "ОНЛАЙН",
         offline: "ОФФЛАЙН",
         online_players: "Зарегистрировано:",
+        online_site_players: "Онлайн игроки:",
         ping: "Пинг:",
         guest_title: "Гость",
         guest_desc: "Не зарегистрирован",
@@ -198,6 +200,7 @@ const dictionary = {
         online: "ONLINE",
         offline: "OFFLINE",
         online_players: "Registered Accounts:",
+        online_site_players: "Online Players:",
         ping: "Ping:",
         guest_title: "Guest",
         guest_desc: "Not registered",
@@ -860,6 +863,15 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         });
 
+        // Listen to active online users count in Firestore and display it dynamically
+        onSnapshot(query(collection(db, "users"), where("isOnline", "==", true)), (snapshot) => {
+            const onlineUsers = snapshot.size;
+            const topOnlinePlayersEl = document.getElementById("top-online-site-players");
+            if (topOnlinePlayersEl) {
+                topOnlinePlayersEl.textContent = `${onlineUsers}`;
+            }
+        });
+
         try {
             onSnapshot(doc(db, "server_status", "status"), (docSnap) => {
                 if (docSnap.exists()) {
@@ -882,6 +894,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         const topPlayerCountEl = document.getElementById("top-player-count");
         if (topPlayerCountEl) {
             topPlayerCountEl.textContent = `${users.length}`;
+        }
+
+        const topOnlinePlayersEl = document.getElementById("top-online-site-players");
+        if (topOnlinePlayersEl) {
+            topOnlinePlayersEl.textContent = activeUser ? "1" : "0";
         }
 
         // Local fallback (Simulated live update / periodic toggle)
