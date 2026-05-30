@@ -37,8 +37,9 @@ const dictionary = {
         server: "Server:",
         online: "FAOL",
         offline: "OFLAYN",
-        online_players: "Ro'yxatdan o'tganlar:",
-        online_site_players: "Online o'yinchilar:",
+        online_players: "Online o'yinchilar:",
+        online_site_players: "Saytda faol:",
+        registered_accounts: "Ro'yxatdan o'tganlar:",
         ping: "Ping:",
         guest_title: "Mehmon",
         guest_desc: "Ro'yxatdan o'tmagan",
@@ -118,8 +119,9 @@ const dictionary = {
         server: "Сервер:",
         online: "ОНЛАЙН",
         offline: "ОФФЛАЙН",
-        online_players: "Зарегистрировано:",
-        online_site_players: "Онлайн игроки:",
+        online_players: "Игроков онлайн:",
+        online_site_players: "На сайте:",
+        registered_accounts: "Зарегистрировано:",
         ping: "Пинг:",
         guest_title: "Гость",
         guest_desc: "Не зарегистрирован",
@@ -199,8 +201,9 @@ const dictionary = {
         server: "Server:",
         online: "ONLINE",
         offline: "OFFLINE",
-        online_players: "Registered Accounts:",
-        online_site_players: "Online Players:",
+        online_players: "Online Players:",
+        online_site_players: "Active on Site:",
+        registered_accounts: "Registered Accounts:",
         ping: "Ping:",
         guest_title: "Guest",
         guest_desc: "Not registered",
@@ -829,7 +832,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             const players = statusData.playersOnline !== undefined ? statusData.playersOnline : 0;
             const maxPlayers = statusData.playersMax !== undefined ? statusData.playersMax : 1000;
             
-            // We do not overwrite registered accounts count with server online players count here
+            if (topPlayerCountEl) {
+                topPlayerCountEl.textContent = `${players} / ${maxPlayers}`;
+            }
             
             if (statusDotEl) {
                 if (isOnline) {
@@ -857,9 +862,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Listen to total registered users count in Firestore and display it dynamically
         onSnapshot(collection(db, "users"), (snapshot) => {
             const totalUsers = snapshot.size;
-            const topPlayerCountEl = document.getElementById("top-player-count");
-            if (topPlayerCountEl) {
-                topPlayerCountEl.textContent = `${totalUsers}`;
+            const topRegisteredCountEl = document.getElementById("top-registered-count");
+            if (topRegisteredCountEl) {
+                topRegisteredCountEl.textContent = `${totalUsers}`;
             }
         });
 
@@ -891,9 +896,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     } else {
         const users = Database.getData('mir2_users');
-        const topPlayerCountEl = document.getElementById("top-player-count");
-        if (topPlayerCountEl) {
-            topPlayerCountEl.textContent = `${users.length}`;
+        const topRegisteredCountEl = document.getElementById("top-registered-count");
+        if (topRegisteredCountEl) {
+            topRegisteredCountEl.textContent = `${users.length}`;
         }
 
         const topOnlinePlayersEl = document.getElementById("top-online-site-players");
