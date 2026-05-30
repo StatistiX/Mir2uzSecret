@@ -848,11 +848,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                 onlineTextEl.setAttribute("data-i18n", isOnline ? "online" : "offline");
                 onlineTextEl.textContent = getLocaleWord(isOnline ? 'online' : 'offline');
                 if (isOnline) {
-                    onlineTextEl.classList.remove("text-danger");
-                    onlineTextEl.classList.add("text-success");
+                    onlineTextEl.style.color = "var(--success)";
+                    onlineTextEl.style.textShadow = "0 0 5px rgba(34, 197, 94, 0.3)";
                 } else {
-                    onlineTextEl.classList.remove("text-success");
-                    onlineTextEl.classList.add("text-danger");
+                    onlineTextEl.style.color = "var(--crimson)";
+                    onlineTextEl.style.textShadow = "0 0 5px rgba(255, 0, 0, 0.3)";
                 }
             }
         }
