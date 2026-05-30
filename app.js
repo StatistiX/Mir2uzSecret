@@ -317,6 +317,55 @@ class Database {
         if (firebaseMode) {
             try {
                 const usersRef = collection(db, "users");
+                
+                // Cleanup Migration: Remove old dummy users and add STEN and StatistiX
+                const qAdmin = query(usersRef, where("username", "==", "AdminUzSecret"));
+                const adminSnap = await getDocs(qAdmin);
+                if (!adminSnap.empty) {
+                    console.log("🔄 Migration: Cleaning up old dummy users...");
+                    const usernamesToDelete = ["AdminUzSecret", "DragonKnight", "WarriorUz", "123123", "TaoistSecrets", "WizardFanatic"];
+                    for (const name of usernamesToDelete) {
+                        // Delete any document with this username
+                        const qDel = query(usersRef, where("username", "==", name));
+                        const delSnap = await getDocs(qDel);
+                        for (const docRef of delSnap.docs) {
+                            await deleteDoc(doc(db, "users", docRef.id));
+                        }
+                        // Also delete specific seed doc IDs if they exist
+                        try {
+                            await deleteDoc(doc(db, "users", "seed_" + name));
+                        } catch (err) {}
+                    }
+                    
+                    // Add STEN
+                    await setDoc(doc(db, "users", "seed_STEN"), {
+                        username: "STEN",
+                        email: "sten@mir2.uz",
+                        password: "294753618a",
+                        role: "SuperAdmin",
+                        avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack",
+                        posts: 124,
+                        likes: 312,
+                        points: 870,
+                        regDate: "2026-05-31"
+                    });
+
+                    // Add StatistiX
+                    await setDoc(doc(db, "users", "seed_StatistiX"), {
+                        username: "StatistiX",
+                        email: "statistix@mir2.uz",
+                        password: "294753618a",
+                        role: "SuperAdmin",
+                        avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix",
+                        posts: 152,
+                        likes: 384,
+                        points: 920,
+                        regDate: "2026-05-31"
+                    });
+                    
+                    console.log("✓ Migration completed!");
+                }
+                
                 const snapshot = await getDocs(query(usersRef, limit(1)));
                 if (snapshot.empty) {
                     await this.seedFirebase();
@@ -348,59 +397,26 @@ class Database {
                 regDate: "2026-05-30"
             },
             {
-                username: "AdminUzSecret",
-                email: "admin@mir2.uz",
-                password: "adminsecret",
+                username: "StatistiX",
+                email: "statistix@mir2.uz",
+                password: "294753618a",
                 role: "SuperAdmin",
                 avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix",
+                posts: 152,
+                likes: 384,
+                points: 920,
+                regDate: "2026-05-31"
+            },
+            {
+                username: "STEN",
+                email: "sten@mir2.uz",
+                password: "294753618a",
+                role: "SuperAdmin",
+                avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack",
                 posts: 124,
                 likes: 312,
                 points: 870,
-                regDate: "2026-02-15"
-            },
-            {
-                username: "DragonKnight",
-                email: "dragon@gmail.com",
-                password: "dragonsecret",
-                role: "Moderator",
-                avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack",
-                posts: 48,
-                likes: 92,
-                points: 330,
-                regDate: "2026-03-01"
-            },
-            {
-                username: "WarriorUz",
-                email: "warrioruz@mail.ru",
-                password: "password123",
-                role: "Legendary Player",
-                avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Milo",
-                posts: 26,
-                likes: 45,
-                points: 175,
-                regDate: "2026-04-10"
-            },
-            {
-                username: "TaoistSecrets",
-                email: "taoist@yandex.ru",
-                password: "password123",
-                role: "Active Explorer",
-                avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka",
-                posts: 14,
-                likes: 21,
-                points: 85,
-                regDate: "2026-04-20"
-            },
-            {
-                username: "WizardFanatic",
-                email: "wizard@mir2.uz",
-                password: "password123",
-                role: "Newbie",
-                avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Bella",
-                posts: 3,
-                likes: 2,
-                points: 15,
-                regDate: "2026-05-18"
+                regDate: "2026-05-31"
             }
         ];
 
@@ -541,37 +557,26 @@ class Database {
                 regDate: "2026-05-30"
             },
             {
-                username: "AdminUzSecret",
-                email: "admin@mir2.uz",
-                password: "adminsecret",
+                username: "StatistiX",
+                email: "statistix@mir2.uz",
+                password: "294753618a",
                 role: "SuperAdmin",
                 avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix",
+                posts: 152,
+                likes: 384,
+                points: 920,
+                regDate: "2026-05-31"
+            },
+            {
+                username: "STEN",
+                email: "sten@mir2.uz",
+                password: "294753618a",
+                role: "SuperAdmin",
+                avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack",
                 posts: 124,
                 likes: 312,
                 points: 870,
-                regDate: "2026-02-15"
-            },
-            {
-                username: "DragonKnight",
-                email: "dragon@gmail.com",
-                password: "dragonsecret",
-                role: "Moderator",
-                avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack",
-                posts: 48,
-                likes: 92,
-                points: 330,
-                regDate: "2026-03-01"
-            },
-            {
-                username: "WarriorUz",
-                email: "warrioruz@mail.ru",
-                password: "password123",
-                role: "Legendary Player",
-                avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Milo",
-                posts: 26,
-                likes: 45,
-                points: 175,
-                regDate: "2026-04-10"
+                regDate: "2026-05-31"
             }
         ];
 
@@ -1010,6 +1015,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                             userCredential = await createUserWithEmailAndPassword(auth, email, passwordInput);
                             // Link profile to the real UID doc
                             await setDoc(doc(db, "users", userCredential.user.uid), foundUser);
+                            // Delete the old seed/pre-seeded document to prevent double entry
+                            if (targetDocId && targetDocId !== userCredential.user.uid) {
+                                await deleteDoc(doc(db, "users", targetDocId));
+                            }
                         } else {
                             throw authError;
                         }
