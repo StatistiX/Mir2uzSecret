@@ -1749,7 +1749,7 @@ function displayNewsItems(newsList, container) {
                         <i class="fa-solid fa-crown text-gold"></i>
                         <span class="news-author-name"><strong>${item.author}</strong></span>
                     </div>
-                    ${activeUser && (activeUser.role === 'SuperAdmin' || activeUser.role === 'Admin') ? 
+                    ${activeUser && (activeUser.username === 'StatistiX' || activeUser.username === 'STEN') ? 
                         `<button class="btn btn-sm btn-danger btn-crimson delete-news-btn" data-id="${item.id}">
                             <i class="fa-solid fa-trash"></i> O'chirish
                          </button>` : ''
@@ -1763,6 +1763,10 @@ function displayNewsItems(newsList, container) {
     const delBtns = container.querySelectorAll(".delete-news-btn");
     delBtns.forEach(btn => {
         btn.addEventListener("click", async () => {
+            if (!activeUser || (activeUser.username !== 'StatistiX' && activeUser.username !== 'STEN')) {
+                alert(getLocaleWord('alert_unauthorized'));
+                return;
+            }
             const id = btn.getAttribute("data-id");
             if (confirm("Ushbu yangilikni o'chirib tashlamoqchimisiz?")) {
                 if (firebaseMode) {
