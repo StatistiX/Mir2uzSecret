@@ -53,9 +53,10 @@ const dictionary = {
         nav_admin: "Admin Panel",
         server_info: "SERVER MA'LUMOTLARI",
         server_version: "Versiya:",
-        server_exp: "Tajriba (EXP):",
-        server_drop: "Drop darajasi:",
-        server_uptime: "Uptime:",
+        server_type: "Server turi:",
+        server_exp: "Exp rate:",
+        server_drop: "Drop rate:",
+        server_levelcap: "LevelCap:",
         latest_news: "SO'NGGI YANGILIKLAR & PATCHLAR",
         add_news: "Yangilik qo'shish",
         forum_title: "LEGEND OF MIR 2 MUHOKAMALARI",
@@ -135,9 +136,10 @@ const dictionary = {
         nav_admin: "Админ Панель",
         server_info: "ИНФОРМАЦИЯ О СЕРВЕРЕ",
         server_version: "Версия:",
-        server_exp: "Опыт (EXP):",
-        server_drop: "Рейт дропа:",
-        server_uptime: "Аптайм:",
+        server_type: "Тип сервера:",
+        server_exp: "Exp rate:",
+        server_drop: "Drop rate:",
+        server_levelcap: "LevelCap:",
         latest_news: "ПОСЛЕДНИЕ НОВОСТИ И ПАТЧИ",
         add_news: "Добавить новость",
         forum_title: "ОБСУЖДЕНИЯ LEGEND OF MIR 2",
@@ -217,9 +219,10 @@ const dictionary = {
         nav_admin: "Admin Panel",
         server_info: "SERVER STATISTICS",
         server_version: "Version:",
-        server_exp: "Experience (EXP):",
-        server_drop: "Drop Rate:",
-        server_uptime: "Uptime:",
+        server_type: "Server Type:",
+        server_exp: "Exp rate:",
+        server_drop: "Drop rate:",
+        server_levelcap: "LevelCap:",
         latest_news: "LATEST NEWS & PATCH NOTES",
         add_news: "Add News",
         forum_title: "LEGEND OF MIR 2 DISCUSSIONS",
@@ -830,7 +833,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (statusData) {
             const isOnline = statusData.online;
             const players = statusData.playersOnline !== undefined ? statusData.playersOnline : 0;
-            const maxPlayers = statusData.playersMax !== undefined ? statusData.playersMax : 1000;
             
             if (topPlayerCountEl) {
                 topPlayerCountEl.textContent = `${players}`;
@@ -854,6 +856,29 @@ document.addEventListener("DOMContentLoaded", async () => {
                     onlineTextEl.style.color = "var(--crimson)";
                     onlineTextEl.style.textShadow = "0 0 5px rgba(255, 0, 0, 0.3)";
                 }
+            }
+
+            // --- SERVER INFO CARD FIELDS (from friend's game server machine) ---
+            const versionEl = document.getElementById("server-stat-version");
+            const typeEl = document.getElementById("server-stat-type");
+            const expEl = document.getElementById("server-stat-exp");
+            const dropEl = document.getElementById("server-stat-drop");
+            const levelcapEl = document.getElementById("server-stat-levelcap");
+
+            if (versionEl && statusData.version) {
+                versionEl.textContent = statusData.version;
+            }
+            if (typeEl && statusData.serverType) {
+                typeEl.textContent = statusData.serverType;
+            }
+            if (expEl && statusData.expRate) {
+                expEl.textContent = statusData.expRate;
+            }
+            if (dropEl && statusData.dropRate) {
+                dropEl.textContent = statusData.dropRate;
+            }
+            if (levelcapEl && statusData.levelCap) {
+                levelcapEl.textContent = statusData.levelCap;
             }
         }
     };
@@ -887,6 +912,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                         online: false,
                         playersOnline: 0,
                         playersMax: 1000,
+                        version: "1.0.0",
+                        serverType: "Crystal",
+                        expRate: "Secret",
+                        dropRate: "Secret",
+                        levelCap: "Secret",
                         lastUpdated: serverTimestamp()
                     });
                 }
@@ -1738,9 +1768,8 @@ function displayNewsItems(newsList, container) {
                 if (firebaseMode) {
                     await deleteDoc(doc(db, "news", id));
                 } else {
-                    const intId = parseInt(id);
                     let list = Database.getData('mir2_news');
-                    list = list.filter(n => n.id !== intId);
+                    list = list.filter(n => String(n.id) !== String(id));
                     Database.setData('mir2_news', list);
                     renderNews();
                 }

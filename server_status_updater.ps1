@@ -9,6 +9,13 @@ $GamePort = 7200               # Game Port where players connect (used to count 
 $PlayersMax = 1000             # Maximum players capacity
 $UpdateIntervalSeconds = 10    # Time in seconds between updates
 
+# --- [GAME SERVER METRICS CONFIGS] ---
+$ServerVersion = "1.0.0"       # Game Server Version
+$ServerType = "Crystal"        # Game Server Type
+$ExpRate = "Secret"            # Experience Rate description
+$DropRate = "Secret"           # Drop Rate description
+$LevelCap = "Secret"           # Level Cap description
+
 # --- [FIREBASE DIRECT SYNC CONFIGS] ---
 $FirebaseProjectId = "legendofmir2uzsecret"
 $FirebaseAPIKey = "AIzaSyDLy0MoIvsY5QxdOre5jI9kJRmjslSd7Mg"
@@ -72,6 +79,11 @@ while ($true) {
                 online = @{ booleanValue = [bool]$isOnline }
                 playersOnline = @{ integerValue = [int]$playersCount }
                 playersMax = @{ integerValue = [int]$PlayersMax }
+                version = @{ stringValue = $ServerVersion }
+                serverType = @{ stringValue = $ServerType }
+                expRate = @{ stringValue = $ExpRate }
+                dropRate = @{ stringValue = $DropRate }
+                levelCap = @{ stringValue = $LevelCap }
             }
         } | ConvertTo-Json -Depth 5
         
