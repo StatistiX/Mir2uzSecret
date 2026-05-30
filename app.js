@@ -37,7 +37,7 @@ const dictionary = {
         server: "Server:",
         online: "FAOL",
         offline: "OFLAYN",
-        online_players: "Tizimdagi o'yinchilar:",
+        online_players: "Ro'yxatdan o'tganlar:",
         ping: "Ping:",
         guest_title: "Mehmon",
         guest_desc: "Ro'yxatdan o'tmagan",
@@ -117,7 +117,7 @@ const dictionary = {
         server: "Сервер:",
         online: "ОНЛАЙН",
         offline: "ОФФЛАЙН",
-        online_players: "Игроков онлайн:",
+        online_players: "Зарегистрировано:",
         ping: "Пинг:",
         guest_title: "Гость",
         guest_desc: "Не зарегистрирован",
@@ -197,7 +197,7 @@ const dictionary = {
         server: "Server:",
         online: "ONLINE",
         offline: "OFFLINE",
-        online_players: "Online Players:",
+        online_players: "Registered Accounts:",
         ping: "Ping:",
         guest_title: "Guest",
         guest_desc: "Not registered",
@@ -826,9 +826,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const players = statusData.playersOnline !== undefined ? statusData.playersOnline : 0;
             const maxPlayers = statusData.playersMax !== undefined ? statusData.playersMax : 1000;
             
-            if (topPlayerCountEl) {
-                topPlayerCountEl.textContent = `${players} / ${maxPlayers}`;
-            }
+            // We do not overwrite registered accounts count with server online players count here
             
             if (statusDotEl) {
                 if (isOnline) {
@@ -853,6 +851,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     if (firebaseMode) {
+        // Listen to total registered users count in Firestore and display it dynamically
+        onSnapshot(collection(db, "users"), (snapshot) => {
+            const totalUsers = snapshot.size;
+            const topPlayerCountEl = document.getElementById("top-player-count");
+            if (topPlayerCountEl) {
+                topPlayerCountEl.textContent = `${totalUsers}`;
+            }
+        });
+
         try {
             onSnapshot(doc(db, "server_status", "status"), (docSnap) => {
                 if (docSnap.exists()) {
@@ -871,6 +878,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             console.error("Failed to set up server status real-time sync:", e);
         }
     } else {
+        const users = Database.getData('mir2_users');
+        const topPlayerCountEl = document.getElementById("top-player-count");
+        if (topPlayerCountEl) {
+            topPlayerCountEl.textContent = `${users.length}`;
+        }
+
         // Local fallback (Simulated live update / periodic toggle)
         setInterval(() => {
             const simulatedPlayers = Math.floor(Math.random() * 20) + 150; // simulated
@@ -2190,18 +2203,18 @@ function renderRatings() {
                 item.innerHTML = `
                     <span class="rating-num rank-${rankNum}">${rankNum}</span>
                     <img src="${user.avatar}" class="rating-item-avatar pointer" onclick="showUserProfileModal('${user.username}')" alt="Avatar">
-                    <div class="rating-item-info" style="display: flex; flex-direction: column; justify-content: center;">
-                        <div style="display: flex; align-items: center; gap: 6px;">
-                            <span class="rating-name" onclick="showUserProfileModal('${user.username}')" style="margin: 0; line-height: 1.2;">${user.username}</span>
-                            <span class="rating-badge role-badge ${badgeClass}" style="font-size:0.55rem; padding: 0px 5px; margin: 0; display: inline-block; line-height: 1.2;">${user.role}</span>
+                    <div class="rating-item-info" style="display: flex; flex-direction: column; justify-content: center; gap: 2px;">
+                        <div>
+                            <span class="rating-badge role-badge ${badgeClass}" style="font-size:0.53rem; padding: 1px 5px; margin: 0; display: inline-block; line-height: 1.2; border-radius: 4px;">${user.role}</span>
                         </div>
+                        <span class="rating-name" onclick="showUserProfileModal('${user.username}')" style="margin: 0; line-height: 1.2; font-weight: bold; font-size: 0.9rem; display: block;">${user.username}</span>
                         ${user.isOnline ? `
-                            <div class="status-indicator-wrap" style="display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+                            <div class="status-indicator-wrap" style="display: flex; align-items: center; gap: 4px; margin-top: 1px;">
                                 <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: #2ecc71; box-shadow: 0 0 6px #2ecc71; animation: pulse-green 1.5s infinite alternate;"></span>
                                 <span style="font-size: 0.55rem; color: #2ecc71; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; line-height: 1;">Online</span>
                             </div>
                         ` : `
-                            <div class="status-indicator-wrap" style="display: flex; align-items: center; gap: 4px; margin-top: 2px; opacity: 0.6;">
+                            <div class="status-indicator-wrap" style="display: flex; align-items: center; gap: 4px; margin-top: 1px; opacity: 0.6;">
                                 <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: #95a5a6;"></span>
                                 <span style="font-size: 0.55rem; color: #95a5a6; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; line-height: 1;">Offline</span>
                             </div>
@@ -2228,18 +2241,18 @@ function renderRatings() {
             item.innerHTML = `
                 <span class="rating-num rank-${rankNum}">${rankNum}</span>
                 <img src="${user.avatar}" class="rating-item-avatar pointer" onclick="showUserProfileModal('${user.username}')" alt="Avatar">
-                <div class="rating-item-info" style="display: flex; flex-direction: column; justify-content: center;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span class="rating-name" onclick="showUserProfileModal('${user.username}')" style="margin: 0; line-height: 1.2;">${user.username}</span>
-                        <span class="rating-badge role-badge ${badgeClass}" style="font-size:0.55rem; padding: 0px 5px; margin: 0; display: inline-block; line-height: 1.2;">${user.role}</span>
+                <div class="rating-item-info" style="display: flex; flex-direction: column; justify-content: center; gap: 2px;">
+                    <div>
+                        <span class="rating-badge role-badge ${badgeClass}" style="font-size:0.53rem; padding: 1px 5px; margin: 0; display: inline-block; line-height: 1.2; border-radius: 4px;">${user.role}</span>
                     </div>
+                    <span class="rating-name" onclick="showUserProfileModal('${user.username}')" style="margin: 0; line-height: 1.2; font-weight: bold; font-size: 0.9rem; display: block;">${user.username}</span>
                     ${(activeUser && activeUser.username === user.username) ? `
-                        <div class="status-indicator-wrap" style="display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+                        <div class="status-indicator-wrap" style="display: flex; align-items: center; gap: 4px; margin-top: 1px;">
                             <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: #2ecc71; box-shadow: 0 0 6px #2ecc71; animation: pulse-green 1.5s infinite alternate;"></span>
                             <span style="font-size: 0.55rem; color: #2ecc71; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; line-height: 1;">Online</span>
                         </div>
                     ` : `
-                        <div class="status-indicator-wrap" style="display: flex; align-items: center; gap: 4px; margin-top: 2px; opacity: 0.6;">
+                        <div class="status-indicator-wrap" style="display: flex; align-items: center; gap: 4px; margin-top: 1px; opacity: 0.6;">
                             <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: #95a5a6;"></span>
                             <span style="font-size: 0.55rem; color: #95a5a6; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; line-height: 1;">Offline</span>
                         </div>
