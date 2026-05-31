@@ -92,10 +92,18 @@ const dictionary = {
         tbl_role: "Rol / Daraja",
         tbl_likes: "Ballar",
         tbl_action: "Amal",
-        top_players: "TOP O'YINCHILAR (FORUM)",
+        top_players: "Aktiv ishtirokchilar",
         shoutbox_preview: "Mini Chat",
         go_to_full_chat: "To'liq chatga o'tish",
         partner_links: "HAMKOR SAYTLAR",
+        chat_page_title: "GLOBAL SHOUTBOX JONLI CHAT",
+        download_title: "O'YIN FAYLLARINI YUKLAB OLISH",
+        add_new_file: "Yangi fayl qo'shish",
+        no_files_available: "Yuklab olish uchun fayllar mavjud emas.",
+        no_links_available: "Havolalar mavjud emas",
+        btn_edit: "Tahrirlash",
+        btn_delete: "O'chirish",
+        confirm_delete_download: "Ushbu fayl yuklash kartasini o'chirib tashlamoqchimisiz?",
         footer_credits: "Ushbu veb-portal o'yin ishqibozlari uchun yaratilgan jamoat portalidir. Mir 2 o'yini mualliflik huquqlari Wemade kompaniyasiga tegishlidir.",
         tab_login: "Kirish",
         tab_register: "Ro'yxatdan o'tish",
@@ -177,10 +185,18 @@ const dictionary = {
         tbl_role: "Роль / Звание",
         tbl_likes: "Очки",
         tbl_action: "Действие",
-        top_players: "ТОП ИГРОКОВ (ФОРУМ)",
+        top_players: "Активные участники",
         shoutbox_preview: "Mini Chat",
         go_to_full_chat: "Перейти в полный чат",
         partner_links: "ПАРТНЕРСКИЕ САЙТЫ",
+        chat_page_title: "ГЛОБАЛЬНЫЙ ЖИВОЙ ЧАТ",
+        download_title: "СКАЧАТЬ ФАЙЛЫ ИГРЫ",
+        add_new_file: "Добавить новый файл",
+        no_files_available: "Нет доступных файлов для скачивания.",
+        no_links_available: "Ссылки отсутствуют",
+        btn_edit: "Редактировать",
+        btn_delete: "Удалить",
+        confirm_delete_download: "Вы действительно хотите удалить эту карточку скачивания?",
         footer_credits: "Данный веб-портал создан фанатами игры для фанатов. Права на игру Legend of Mir 2 принадлежат компании Wemade.",
         tab_login: "Вход",
         tab_register: "Регистрация",
@@ -262,10 +278,18 @@ const dictionary = {
         tbl_role: "Role / Rank",
         tbl_likes: "Points",
         tbl_action: "Action",
-        top_players: "TOP PLAYERS (FORUM)",
+        top_players: "Active Participants",
         shoutbox_preview: "Mini Chat",
         go_to_full_chat: "Go to Full Chat",
         partner_links: "PARTNER WEBSITES",
+        chat_page_title: "GLOBAL SHOUTBOX LIVE CHAT",
+        download_title: "DOWNLOAD GAME FILES",
+        add_new_file: "Add New File",
+        no_files_available: "No files available for download.",
+        no_links_available: "No links available",
+        btn_edit: "Edit",
+        btn_delete: "Delete",
+        confirm_delete_download: "Are you sure you want to delete this download card?",
         footer_credits: "This community web portal was built by fans for fans. All copyrights to Legend of Mir 2 belong to Wemade.",
         tab_login: "Login",
         tab_register: "Register",
@@ -3138,7 +3162,7 @@ function renderDownloads() {
 
 function displayDownloadItems(downloadsList, container) {
     if (downloadsList.length === 0) {
-        container.innerHTML = `<div class="download-card" style="padding:20px; text-align:center; color:var(--text-muted);">Yuklab olish uchun fayllar mavjud emas.</div>`;
+        container.innerHTML = `<div class="download-card" style="padding:20px; text-align:center; color:var(--text-muted);">${getLocaleWord('no_files_available')}</div>`;
         return;
     }
 
@@ -3163,7 +3187,7 @@ function displayDownloadItems(downloadsList, container) {
                 `;
             });
         } else {
-            linksHTML = `<span style="color:var(--text-muted); font-size:0.85rem;">Havolalar mavjud emas</span>`;
+            linksHTML = `<span style="color:var(--text-muted); font-size:0.85rem;">${getLocaleWord('no_links_available')}</span>`;
         }
 
         // Admin buttons
@@ -3172,10 +3196,10 @@ function displayDownloadItems(downloadsList, container) {
             adminFooter = `
                 <div class="download-card-footer">
                     <button class="btn btn-sm btn-primary edit-dl-btn" data-id="${item.id}" style="padding:4px 10px; font-size:0.7rem;">
-                        <i class="fa-solid fa-pen-to-square"></i> Tahrirlash
+                        <i class="fa-solid fa-pen-to-square"></i> ${getLocaleWord('btn_edit')}
                     </button>
                     <button class="btn btn-sm btn-danger btn-crimson delete-dl-btn" data-id="${item.id}" style="padding:4px 10px; font-size:0.7rem;">
-                        <i class="fa-solid fa-trash"></i> O'chirish
+                        <i class="fa-solid fa-trash"></i> ${getLocaleWord('btn_delete')}
                     </button>
                 </div>
             `;
@@ -3208,7 +3232,7 @@ function displayDownloadItems(downloadsList, container) {
                 return;
             }
             const id = btn.getAttribute("data-id");
-            if (confirm("Ushbu fayl yuklash kartasini o'chirib tashlamoqchimisiz?")) {
+            if (confirm(getLocaleWord('confirm_delete_download'))) {
                 if (firebaseMode) {
                     await deleteDoc(doc(db, "downloads", id));
                 } else {
