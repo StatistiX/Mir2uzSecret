@@ -81,6 +81,7 @@ const dictionary = {
         write_reply_label: "Fikr yoki javob yozing",
         send_reply: "Javobni yuborish",
         chat_login_prompt: "Chatda xabar yozish uchun ro'yxatdan o'tgan bo'lishingiz kerak.",
+        mini_chat_login_prompt: "Yozish uchun tizimga kiring.",
         admin_news_title: "RASMIY YANGILIK/PATCH KABLARI",
         news_title_label: "Yangilik sarlavhasi",
         news_image_label: "Tasvir URL (Ixtiyoriy)",
@@ -165,6 +166,7 @@ const dictionary = {
         write_reply_label: "Напишите ответ или отзыв",
         send_reply: "Отправить ответ",
         chat_login_prompt: "Для отправки сообщений в чат вы должны быть авторизованы.",
+        mini_chat_login_prompt: "Войдите для отправки.",
         admin_news_title: "ОФИЦИАЛЬНЫЙ НОВОСТНОЙ КАНАЛ / ПАТЧИ",
         news_title_label: "Заголовок новости",
         news_image_label: "Изображение (Опционально)",
@@ -249,6 +251,7 @@ const dictionary = {
         write_reply_label: "Write your reply or feedback",
         send_reply: "Send Reply",
         chat_login_prompt: "You must be registered and logged in to post in shoutbox.",
+        mini_chat_login_prompt: "Login to send message.",
         admin_news_title: "OFFICIAL SERVER NEWS & ANNOUNCEMENTS",
         news_title_label: "News Title",
         news_image_label: "Image URL (Optional)",
@@ -289,6 +292,8 @@ const dictionary = {
 // Global Active Language & User
 let currentLang = 'uz';
 let activeUser = null;
+let sidebarChatUnsubscribe = null;
+let fullChatUnsubscribe = null;
 
 // ==========================================================================
 // 2. SAFE STORAGE ENGINE (LOCAL STORAGE WITH IN-MEMORY FALLBACK)
@@ -958,6 +963,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // INITIAL RENDER PAGE SPECIFIC PANELS & SIDEBARS
     renderSidebarShoutbox();
+    setupSidebarMiniChatInput();
+    setupTelegramModal();
 
     if (activePage === 'home') {
         renderNews();
@@ -1601,6 +1608,12 @@ function updateUserUI() {
         if (chatForm) chatForm.classList.add("hidden");
         if (chatPrompt) chatPrompt.classList.remove("hidden");
     }
+
+    // Dynamic mini chat setup and toggle on session change
+    if (typeof setupSidebarMiniChatInput === 'function') setupSidebarMiniChatInput();
+    if (typeof toggleMiniChatUI === 'function') toggleMiniChatUI();
+    if (typeof renderSidebarShoutbox === 'function') renderSidebarShoutbox();
+    if (typeof renderShoutbox === 'function') renderShoutbox();
 }
 
 async function recalculateUserPoints(username) {
@@ -2261,6 +2274,8 @@ function renderShoutbox() {
     const fullChatLog = document.getElementById("chat-messages-log");
     if (!fullChatLog) return;
 
+    const isAdmin = activeUser && (activeUser.role === 'SuperAdmin' || activeUser.role === 'Admin' || activeUser.role === 'Moderator');
+
     if (firebaseMode) {
         const chatQuery = query(collection(db, "chat_messages"), orderBy("timestamp", "asc"));
         onSnapshot(chatQuery, (snapshot) => {
@@ -2272,11 +2287,16 @@ function renderShoutbox() {
                 const badgeClass = msg.role.toLowerCase().replace(" ", "-");
                 row.innerHTML = `
                     <img src="${msg.avatar}" class="chat-msg-avatar pointer" onclick="showUserProfileModal('${msg.username}')" alt="Avatar">
-                    <div class="chat-msg-content">
-                        <div class="chat-msg-header">
+                    <div class="chat-msg-content" style="flex: 1; max-width: 85%;">
+                        <div class="chat-msg-header" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                             <span class="chat-msg-user pointer" onclick="showUserProfileModal('${msg.username}')">${msg.username}</span>
                             <span class="role-badge ${badgeClass}" style="font-size:0.6rem; padding: 1px 6px; margin:0;">${msg.role}</span>
                             <span class="chat-msg-time">${msg.time}</span>
+                            ${isAdmin ? `
+                                <button class="btn btn-sm btn-danger btn-crimson delete-chat-msg-btn" style="padding: 2px 6px; font-size: 0.65rem; margin-left: auto; line-height: 1;" data-id="${docSnap.id}">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            ` : ''}
                         </div>
                         <div class="chat-msg-text">${escapeHTML(msg.message)}</div>
                     </div>
@@ -2284,26 +2304,61 @@ function renderShoutbox() {
                 fullChatLog.appendChild(row);
             });
             scrollChatToBottom();
+            bindChatDeleteListeners();
         });
     } else {
         const chatLogs = Database.getData('mir2_chat');
         fullChatLog.innerHTML = "";
-        chatLogs.forEach(msg => {
+        chatLogs.forEach((msg, index) => {
             const row = document.createElement("div");
             row.className = "chat-msg-row";
             const badgeClass = msg.role.toLowerCase().replace(" ", "-");
             row.innerHTML = `
                 <img src="${msg.avatar}" class="chat-msg-avatar pointer" onclick="showUserProfileModal('${msg.username}')" alt="Avatar">
-                <div class="chat-msg-content">
-                    <div class="chat-msg-header">
+                <div class="chat-msg-content" style="flex: 1; max-width: 85%;">
+                    <div class="chat-msg-header" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                         <span class="chat-msg-user pointer" onclick="showUserProfileModal('${msg.username}')">${msg.username}</span>
                         <span class="role-badge ${badgeClass}" style="font-size:0.6rem; padding: 1px 6px; margin:0;">${msg.role}</span>
                         <span class="chat-msg-time">${msg.time}</span>
+                        ${isAdmin ? `
+                            <button class="btn btn-sm btn-danger btn-crimson delete-chat-msg-btn" style="padding: 2px 6px; font-size: 0.65rem; margin-left: auto; line-height: 1;" data-index="${index}">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        ` : ''}
                     </div>
                     <div class="chat-msg-text">${escapeHTML(msg.message)}</div>
                 </div>
             `;
             fullChatLog.appendChild(row);
+        });
+        bindChatDeleteListeners();
+    }
+
+    function bindChatDeleteListeners() {
+        const delChatBtns = fullChatLog.querySelectorAll(".delete-chat-msg-btn");
+        delChatBtns.forEach(btn => {
+            btn.addEventListener("click", async (e) => {
+                e.stopPropagation();
+                if (confirm(currentLang === 'uz' ? "Ushbu xabarni o'chirishni xohlaysizmi?" : (currentLang === 'ru' ? "Удалить это сообщение?" : "Do you want to delete this message?"))) {
+                    if (firebaseMode) {
+                        const id = btn.getAttribute("data-id");
+                        try {
+                            await deleteDoc(doc(db, "chat_messages", id));
+                        } catch (err) {
+                            console.error("Failed to delete chat message:", err);
+                        }
+                    } else {
+                        const index = parseInt(btn.getAttribute("data-index"), 10);
+                        const chat = Database.getData('mir2_chat');
+                        if (!isNaN(index) && index >= 0 && index < chat.length) {
+                            chat.splice(index, 1);
+                            Database.setData('mir2_chat', chat);
+                            renderShoutbox();
+                            renderSidebarShoutbox();
+                        }
+                    }
+                }
+            });
         });
     }
 }
@@ -2312,41 +2367,341 @@ function renderSidebarShoutbox() {
     const sidebarChatList = document.getElementById("mini-chat-list");
     if (!sidebarChatList) return;
 
+    const isAdmin = activeUser && (activeUser.role === 'SuperAdmin' || activeUser.role === 'Admin' || activeUser.role === 'Moderator');
+
     if (firebaseMode) {
+        if (sidebarChatUnsubscribe) {
+            sidebarChatUnsubscribe();
+            sidebarChatUnsubscribe = null;
+        }
+
         const chatQuery = query(collection(db, "chat_messages"), orderBy("timestamp", "asc"));
-        onSnapshot(chatQuery, (snapshot) => {
+        sidebarChatUnsubscribe = onSnapshot(chatQuery, (snapshot) => {
             sidebarChatList.innerHTML = "";
             const chatLogs = [];
             snapshot.forEach(docSnap => {
-                chatLogs.push(docSnap.data());
+                chatLogs.push({
+                    id: docSnap.id,
+                    ...docSnap.data()
+                });
             });
             const recent = chatLogs.slice(-8);
             recent.forEach(msg => {
                 const mRow = document.createElement("div");
                 mRow.className = "mini-chat-msg";
+                mRow.style.cssText = "display: flex; justify-content: space-between; align-items: flex-start; gap: 4px; margin-bottom: 6px; font-size: 0.8rem; border-bottom: 1px solid rgba(255, 255, 255, 0.02); padding-bottom: 4px;";
                 mRow.innerHTML = `
-                    <span class="mini-chat-user pointer" onclick="showUserProfileModal('${msg.username}')">${msg.username}:</span> 
-                    <span class="mini-chat-text">${escapeHTML(msg.message)}</span>
+                    <div style="flex: 1;">
+                        <span class="mini-chat-user pointer" onclick="showUserProfileModal('${msg.username}')">${msg.username}:</span> 
+                        <span class="mini-chat-text">${escapeHTML(msg.message)}</span>
+                    </div>
+                    ${isAdmin ? `
+                        <span class="delete-mini-chat-btn pointer text-danger" style="font-size: 0.75rem; opacity: 0.6; transition: 0.2s; padding: 2px 4px; line-height: 1;" data-id="${msg.id}" title="Xabarni o'chirish">
+                            <i class="fa-solid fa-trash"></i>
+                        </span>
+                    ` : ''}
                 `;
                 sidebarChatList.appendChild(mRow);
             });
             sidebarChatList.scrollTop = sidebarChatList.scrollHeight;
+            bindMiniChatDeleteListeners();
         });
     } else {
         const chatLogs = Database.getData('mir2_chat');
         sidebarChatList.innerHTML = "";
         const recent = chatLogs.slice(-8);
-        recent.forEach(msg => {
+        
+        const recentWithIndices = recent.map((msg) => {
+            const originalIndex = chatLogs.indexOf(msg);
+            return { msg, originalIndex };
+        });
+
+        recentWithIndices.forEach(({ msg, originalIndex }) => {
             const mRow = document.createElement("div");
             mRow.className = "mini-chat-msg";
+            mRow.style.cssText = "display: flex; justify-content: space-between; align-items: flex-start; gap: 4px; margin-bottom: 6px; font-size: 0.8rem; border-bottom: 1px solid rgba(255, 255, 255, 0.02); padding-bottom: 4px;";
             mRow.innerHTML = `
-                <span class="mini-chat-user pointer" onclick="showUserProfileModal('${msg.username}')">${msg.username}:</span> 
-                <span class="mini-chat-text">${escapeHTML(msg.message)}</span>
+                <div style="flex: 1;">
+                    <span class="mini-chat-user pointer" onclick="showUserProfileModal('${msg.username}')">${msg.username}:</span> 
+                    <span class="mini-chat-text">${escapeHTML(msg.message)}</span>
+                </div>
+                ${isAdmin ? `
+                    <span class="delete-mini-chat-btn pointer text-danger" style="font-size: 0.75rem; opacity: 0.6; transition: 0.2s; padding: 2px 4px; line-height: 1;" data-index="${originalIndex}" title="Xabarni o'chirish">
+                        <i class="fa-solid fa-trash"></i>
+                    </span>
+                ` : ''}
             `;
             sidebarChatList.appendChild(mRow);
         });
         sidebarChatList.scrollTop = sidebarChatList.scrollHeight;
+        bindMiniChatDeleteListeners();
     }
+
+    function bindMiniChatDeleteListeners() {
+        const delBtns = sidebarChatList.querySelectorAll(".delete-mini-chat-btn");
+        delBtns.forEach(btn => {
+            btn.addEventListener("click", async (e) => {
+                e.stopPropagation();
+                if (confirm(currentLang === 'uz' ? "Ushbu xabarni o'chirishni xohlaysizmi?" : (currentLang === 'ru' ? "Удалить это сообщение?" : "Do you want to delete this message?"))) {
+                    if (firebaseMode) {
+                        const id = btn.getAttribute("data-id");
+                        try {
+                            await deleteDoc(doc(db, "chat_messages", id));
+                        } catch (err) {
+                            console.error("Failed to delete mini-chat message:", err);
+                        }
+                    } else {
+                        const index = parseInt(btn.getAttribute("data-index"), 10);
+                        const chat = Database.getData('mir2_chat');
+                        if (!isNaN(index) && index >= 0 && index < chat.length) {
+                            chat.splice(index, 1);
+                            Database.setData('mir2_chat', chat);
+                            if (typeof renderShoutbox === 'function') renderShoutbox();
+                            renderSidebarShoutbox();
+                        }
+                    }
+                }
+            });
+            btn.onmouseenter = () => btn.style.opacity = "1";
+            btn.onmouseleave = () => btn.style.opacity = "0.6";
+        });
+    }
+}
+
+// Dynamic Sidebar Writable Chat Form Setup
+function setupSidebarMiniChatInput() {
+    const miniChatCard = document.querySelector(".mini-chat-card");
+    if (!miniChatCard) return;
+
+    let formContainer = document.getElementById("mini-chat-form-container");
+    if (!formContainer) {
+        formContainer = document.createElement("div");
+        formContainer.id = "mini-chat-form-container";
+        formContainer.style.marginTop = "8px";
+
+        formContainer.innerHTML = `
+            <div id="mini-chat-guest-prompt" class="hidden" style="font-size: 0.75rem; text-align: center; color: var(--text-muted); margin-bottom: 8px; padding: 6px; border: 1px dashed rgba(212, 175, 55, 0.2); border-radius: 4px; background: rgba(0,0,0,0.2);">
+                <span data-i18n="mini_chat_login_prompt">Yozish uchun tizimga kiring.</span>
+                <a href="#" class="open-login-trigger" style="color: var(--gold); text-decoration: underline; margin-left: 5px;">Kirish</a>
+            </div>
+            <form id="mini-chat-send-form" class="hidden" style="display: flex; gap: 5px; margin-bottom: 8px;">
+                <input type="text" id="mini-chat-message-input" autocomplete="off" required placeholder="Xabar..." class="form-control" style="flex: 1; font-size: 0.8rem; padding: 6px 10px; background: rgba(0,0,0,0.4); border: 1px solid rgba(212, 175, 55, 0.2); color: #fff; border-radius: 4px; font-family: var(--font-body);">
+                <button type="submit" class="btn btn-primary btn-sm" style="padding: 6px 12px; background: linear-gradient(135deg, #d4af37 0%, #aa8513 100%); border: none; color: #000; border-radius: 4px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </form>
+        `;
+
+        const goToChatBtn = document.getElementById("sidebar-go-to-chat-btn");
+        if (goToChatBtn) {
+            miniChatCard.insertBefore(formContainer, goToChatBtn);
+        } else {
+            miniChatCard.appendChild(formContainer);
+        }
+
+        // Bind form submit listener
+        const miniChatSendForm = document.getElementById("mini-chat-send-form");
+        if (miniChatSendForm) {
+            miniChatSendForm.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                if (!activeUser) return;
+
+                const input = document.getElementById("mini-chat-message-input");
+                const msgText = input.value.trim();
+                if (!msgText) return;
+
+                const timeNow = new Date().toTimeString().split(' ')[0].substring(0, 5);
+
+                if (firebaseMode) {
+                    try {
+                        await addDoc(collection(db, "chat_messages"), {
+                            username: activeUser.username,
+                            role: activeUser.role,
+                            avatar: activeUser.avatar,
+                            message: msgText,
+                            time: timeNow,
+                            timestamp: Date.now()
+                        });
+                        // Recalculate points
+                        await recalculateUserPoints(activeUser.username);
+                    } catch (err) {
+                        console.error("Failed to send message in mini-chat:", err);
+                    }
+                } else {
+                    const chat = Database.getData('mir2_chat');
+                    const newMsg = {
+                        username: activeUser.username,
+                        role: activeUser.role,
+                        avatar: activeUser.avatar,
+                        message: msgText,
+                        time: timeNow,
+                        timestamp: Date.now()
+                    };
+                    chat.push(newMsg);
+                    if (chat.length > 50) chat.shift();
+                    Database.setData('mir2_chat', chat);
+
+                    // Add local points (+1 point)
+                    const users = Database.getData('mir2_users');
+                    const uIdx = users.findIndex(u => u.username === activeUser.username);
+                    if (uIdx !== -1) {
+                        users[uIdx].points = (users[uIdx].points || 0) + 1;
+                        Database.setData('mir2_users', users);
+                        activeUser.points = users[uIdx].points;
+                        safeStorage.setItem('mir2_active_user', JSON.stringify(activeUser));
+                    }
+
+                    if (typeof renderShoutbox === 'function') renderShoutbox();
+                    renderSidebarShoutbox();
+                    if (typeof scrollChatToBottom === 'function') scrollChatToBottom();
+                    updateUserUI();
+                    renderRatings();
+                }
+                input.value = "";
+            });
+        }
+    }
+}
+
+// Toggle Writable Mini-Chat visibility states
+function toggleMiniChatUI() {
+    const miniChatForm = document.getElementById("mini-chat-send-form");
+    const miniChatPrompt = document.getElementById("mini-chat-guest-prompt");
+
+    if (activeUser) {
+        if (miniChatForm) miniChatForm.classList.remove("hidden");
+        if (miniChatPrompt) miniChatPrompt.classList.add("hidden");
+    } else {
+        if (miniChatForm) miniChatForm.classList.add("hidden");
+        if (miniChatPrompt) miniChatPrompt.classList.remove("hidden");
+    }
+}
+
+// Premium dynamic centered Telegram QR Modal Builder
+function setupTelegramModal() {
+    const btns = document.querySelectorAll("#open-tg-modal-btn");
+    if (btns.length === 0) return;
+
+    btns.forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            
+            let modal = document.getElementById("telegram-qr-modal");
+            if (modal) {
+                modal.classList.remove("hidden");
+                modal.style.display = "flex";
+                modal.offsetHeight; // Force reflow
+                modal.style.opacity = "1";
+                return;
+            }
+
+            // Inject keyframes dynamic animation
+            if (!document.getElementById("tg-modal-animations")) {
+                const style = document.createElement("style");
+                style.id = "tg-modal-animations";
+                style.innerHTML = `
+                    @keyframes tgModalFadeIn {
+                        from { opacity: 0; transform: translateY(-20px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            modal = document.createElement("div");
+            modal.id = "telegram-qr-modal";
+            modal.className = "modal-backdrop";
+            modal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 10000; backdrop-filter: blur(8px); opacity: 0; transition: opacity 0.3s ease;";
+
+            const card = document.createElement("div");
+            card.className = "modal-card";
+            card.style.cssText = "background: linear-gradient(135deg, #11141a 0%, #07090c 100%); border: 2px solid #0088cc; box-shadow: 0 0 35px rgba(0, 136, 204, 0.5); padding: 30px; border-radius: 12px; max-width: 400px; width: 90%; text-align: center; position: relative; animation: tgModalFadeIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); color: #fff; font-family: var(--font-body);";
+
+            const closeBtn = document.createElement("button");
+            closeBtn.innerHTML = "&times;";
+            closeBtn.style.cssText = "position: absolute; top: 15px; right: 15px; background: none; border: none; color: #7f8c8d; font-size: 2rem; cursor: pointer; transition: 0.2s; line-height: 1; padding: 0;";
+            closeBtn.onmouseenter = () => closeBtn.style.color = "#0088cc";
+            closeBtn.onmouseleave = () => closeBtn.style.color = "#7f8c8d";
+            closeBtn.onclick = () => {
+                modal.style.opacity = "0";
+                setTimeout(() => {
+                    modal.classList.add("hidden");
+                    modal.style.display = "none";
+                }, 300);
+            };
+
+            const title = document.createElement("h3");
+            title.innerHTML = `<i class="fa-brands fa-telegram" style="color: #0088cc; margin-right: 8px;"></i>TELEGRAM KANALIMIZ`;
+            title.style.cssText = "font-family: var(--font-display); font-size: 1.3rem; color: #fff; margin-bottom: 20px; letter-spacing: 1px; border-bottom: 2px solid rgba(0, 136, 204, 0.3); padding-bottom: 12px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);";
+
+            const qrImg = document.createElement("img");
+            qrImg.src = "tg_qr.png";
+            qrImg.alt = "Telegram QR Code";
+            qrImg.style.cssText = "width: 240px; height: auto; display: block; margin: 0 auto 10px; border: 4px solid #fff; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); background: #fff;";
+
+            const qrLink = document.createElement("a");
+            qrLink.href = "https://t.me/mir2uzsecret";
+            qrLink.target = "_blank";
+            qrLink.innerHTML = "https://t.me/mir2uzsecret";
+            qrLink.style.cssText = "display: block; color: #0088cc; font-size: 1.05rem; font-weight: 700; text-decoration: underline; margin-bottom: 20px; transition: color 0.2s ease;";
+            qrLink.onmouseenter = () => qrLink.style.color = "#00a2f3";
+            qrLink.onmouseleave = () => qrLink.style.color = "#0088cc";
+
+            const info = document.createElement("p");
+            info.innerHTML = "QR kodni skanerlang yoki yuqoridagi havola orqali kanalimizga qo'shiling:";
+            info.style.cssText = "font-size: 0.88rem; color: #a4b0be; margin-bottom: 20px; line-height: 1.5;";
+
+            const joinLink = document.createElement("a");
+            joinLink.href = "https://t.me/mir2uzsecret";
+            joinLink.target = "_blank";
+            joinLink.className = "btn btn-primary";
+            joinLink.innerHTML = `<i class="fa-brands fa-telegram"></i> @MIR2UZSECRET KANALI`;
+            joinLink.style.cssText = "display: inline-block; background: linear-gradient(135deg, #0088cc 0%, #005580 100%); border: none; border-radius: 6px; color: #fff; padding: 12px 24px; text-decoration: none; font-weight: bold; font-size: 0.95rem; box-shadow: 0 4px 15px rgba(0, 136, 204, 0.3); transition: 0.3s; width: 100%; box-sizing: border-box;";
+            joinLink.onmouseenter = () => {
+                joinLink.style.transform = "translateY(-2px)";
+                joinLink.style.boxShadow = "0 6px 20px rgba(0, 136, 204, 0.5)";
+            };
+            joinLink.onmouseleave = () => {
+                joinLink.style.transform = "translateY(0)";
+                joinLink.style.boxShadow = "0 4px 15px rgba(0, 136, 204, 0.3)";
+            };
+
+            card.appendChild(closeBtn);
+            card.appendChild(title);
+            card.appendChild(qrImg);
+            card.appendChild(qrLink);
+            card.appendChild(info);
+            card.appendChild(joinLink);
+            modal.appendChild(card);
+
+            modal.onclick = (event) => {
+                if (event.target === modal) {
+                    modal.style.opacity = "0";
+                    setTimeout(() => {
+                        modal.classList.add("hidden");
+                        modal.style.display = "none";
+                    }, 300);
+                }
+            };
+
+            // Close on Escape keypress
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "Escape" && !modal.classList.contains("hidden")) {
+                    modal.style.opacity = "0";
+                    setTimeout(() => {
+                        modal.classList.add("hidden");
+                        modal.style.display = "none";
+                    }, 300);
+                }
+            });
+
+            document.body.appendChild(modal);
+            
+            // Force a reflow for transition
+            modal.offsetHeight;
+            modal.style.opacity = "1";
+        });
+    });
 }
 
 function scrollChatToBottom() {

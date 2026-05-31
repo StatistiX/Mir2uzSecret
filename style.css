@@ -1081,7 +1081,7 @@ textarea.form-control {
 
 /* RIGHT SIDEBAR MINI SHOUTBOX PREVIEW */
 .mini-chat-logs {
-    height: 250px;
+    height: 175px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -1606,4 +1606,17 @@ textarea.form-control {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+}
+
+/* PREMIUM TELEGRAM BUTTON & MODAL Refinements */
+#open-tg-modal-btn {
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+#open-tg-modal-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(0, 136, 204, 0.8) !important;
+    filter: brightness(1.1);
+}
+#open-tg-modal-btn:active {
+    transform: translateY(0);
 }
